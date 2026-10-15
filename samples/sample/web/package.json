@@ -11,8 +11,8 @@
     "@monaco-editor/react": "4.7.0",
     "@tanstack/react-router": "1.170.41",
     "monaco-editor": "0.57.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "zustand": "5.0.15"
   },
   "devDependencies": {
