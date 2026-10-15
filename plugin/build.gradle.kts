@@ -49,14 +49,18 @@ gradlePlugin {
 
 /**
  * Versions the plugins use, kept in sync with the catalog: the sidecar library is added at the plugins' own version,
- * since the two implement one contract.
+ * since the two implement one contract, and Node.js, Electron and `@electron/packager` are the extensions' defaults.
  */
 val generateElectronVersions =
     tasks.register("generateElectronVersions") {
         val electron = libs.versions.electron
         val nodejs = libs.versions.nodejs
+        val electronApp = libs.versions.electronApp
+        val electronPackager = libs.versions.electronPackager
         inputs.property("electron", electron)
         inputs.property("nodejs", nodejs)
+        inputs.property("electronApp", electronApp)
+        inputs.property("electronPackager", electronPackager)
         val outputDir = layout.buildDirectory.dir("generated/source/electronVersions")
         outputs.dir(outputDir)
 
@@ -70,6 +74,8 @@ val generateElectronVersions =
             |internal object ElectronVersions {
             |    const val ELECTRON = "${electron.get()}"
             |    const val NODE = "${nodejs.get()}"
+            |    const val ELECTRON_APP = "${electronApp.get()}"
+            |    const val PACKAGER = "${electronPackager.get()}"
             |}
             |
                 """.trimMargin(),

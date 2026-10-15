@@ -2,6 +2,7 @@ package dev.fathony.electron.gradle.shell
 
 import com.github.gradle.node.npm.task.NpmTask
 import dev.fathony.electron.gradle.DEFAULT_NODE_VERSION
+import dev.fathony.electron.gradle.ElectronVersions
 import dev.fathony.electron.gradle.useNode
 import dev.fathony.electron.gradle.sidecar.ElectronSidecarPlugin
 import org.gradle.api.Plugin
@@ -33,8 +34,8 @@ class ElectronShellPlugin : Plugin<Project> {
         val shell = project.extensions.create("electronShell", ElectronShellExtension::class.java)
         shell.javaVersion.convention(21)
         shell.nodeVersion.convention(DEFAULT_NODE_VERSION)
-        shell.electronVersion.convention("43.7.7")
-        shell.packagerVersion.convention("20.3.0")
+        shell.electronVersion.convention(ElectronVersions.ELECTRON_APP)
+        shell.packagerVersion.convention(ElectronVersions.PACKAGER)
 
         val app = project.layout.buildDirectory.dir("electron-app")
         val generate = project.tasks.register("generateElectronApp", GenerateElectronApp::class.java) {

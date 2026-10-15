@@ -90,7 +90,7 @@ plugins {
 electronShell {
     appName = "My App"
     uiSidecar = "app"
-    // javaVersion = 21, nodeVersion = "24.22.0", electronVersion = "43.7.7", packagerVersion = "20.3.0" by default
+    // javaVersion, nodeVersion, electronVersion and packagerVersion have defaults (see Versions)
 }
 
 dependencies {
@@ -108,6 +108,48 @@ desktop/
   sidecars/<name>/      lib/ (the sidecar's jars) and sidecar.json (name, main class, modules)
   shell.json            which sidecar serves the UI
 ```
+
+### Versions
+
+The defaults are the versions a plugin release was tested with: Java 21, and Node.js, Electron and
+`@electron/packager` from this repo's [version catalog](../gradle/libs.versions.toml). They are kept current on `main`
+and ship with whichever release comes next; a new Electron or Node.js alone does not make a release.
+
+- **Electron** is in the app you ship, and only its latest three majors get security fixes, about six months each.
+  Pin it in your build rather than relying on the plugin's default, and keep it updated there.
+- **Node.js** only runs the build (npm, the page's bundler, the packager); Electron carries its own. The default
+  follows an LTS line, and changes major before that line's end of life.
+- **`@electron/packager`** is called by the plugin's own packaging script, so leave it at the default unless a
+  release says otherwise.
+
+With the version in your catalog, annotated with where it comes from, a regex manager in your `renovate.json` lets
+[Renovate](https://docs.renovatebot.com/) keep it updated:
+
+```toml
+# gradle/libs.versions.toml
+[versions]
+# renovate: datasource=npm depName=electron
+electronApp = "43.7.7"
+```
+
+```kotlin
+electronShell {
+    electronVersion = libs.versions.electronApp
+}
+```
+
+```json
+{
+  "customManagers": [{
+    "customType": "regex",
+    "managerFilePatterns": ["/^gradle/libs\\.versions\\.toml$/"],
+    "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n(?<propName>\\S+) = \"(?<currentValue>[^\"]+)\""]
+  }]
+}
+```
+
+This repo does the same for its defaults; its [renovate.json](../renovate.json) merges patch and minor updates once
+the checks, which package the sample with them, pass.
 
 ## How the Shell Runs Its Sidecars
 
@@ -152,8 +194,10 @@ releases, or on a `release/<major>.x` branch to patch an older major. A version 
 Publishing needs the `REPOSILITE_USERNAME` and `REPOSILITE_TOKEN` repository secrets.
 
 The plugins and the library always share one version: the catalog's `electron` (a SNAPSHOT), replaced by
-`-Pelectron.version=<version>` on release. The plugin build writes it, with the default Node.js version, into the
-generated `ElectronVersions`.
+`-Pelectron.version=<version>` on release. The plugin build writes it, with the default Node.js, Electron and
+`@electron/packager` versions (the catalog's `nodejs`, `electronApp` and `electronPackager`), into the generated
+`ElectronVersions`. Renovate updates those three on `main` (see [Versions](#versions)); they need no release of
+their own.
 
 ### The Electron app
 
@@ -164,7 +208,8 @@ pinning Electron (`electronShell { electronVersion }`) and `@electron/packager`,
 and Node.js support (IntelliJ IDEA Ultimate):
 
 - **Node interpreter:** Settings, Languages & Frameworks, Node.js: point it at the Node the build downloaded,
-  `~/.gradle/nodejs/node-v24.22.0-<os>-<arch>/bin/node`, so the IDE and Gradle use the same one.
+  `~/.gradle/nodejs/node-v<nodejs>-<os>-<arch>/bin/node` (`<nodejs>` from the catalog), so the IDE and Gradle use the
+  same one.
 - **Debugging the main process:** run `./gradlew :samples:shell:assembleDesktop :samples:shell:npmInstall`, then a
   Node.js run configuration with the interpreter `samples/shell/build/electron-app/node_modules/.bin/electron`, the
   working directory `samples/shell/build/electron-app` and the environment

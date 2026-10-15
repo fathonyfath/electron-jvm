@@ -22,6 +22,11 @@ jobs:
         with:
           path: ~/.gradle/nodejs
           key: node-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Cache Electron download
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Cache node_modules
         uses: actions/cache@v6
         with:
@@ -33,3 +38,7 @@ jobs:
       - name: assembleDesktop
         # jdeps and jlink on the sample's sidecars: the shared runtime and the desktop folder the app ships.
         run: ./gradlew :samples:shell:assembleDesktop
+      - name: package
+        # Installs the default Electron and @electron/packager and packages the sample with them, so a version bump
+        # (Renovate's included) is tested before it merges.
+        run: ./gradlew :samples:shell:package

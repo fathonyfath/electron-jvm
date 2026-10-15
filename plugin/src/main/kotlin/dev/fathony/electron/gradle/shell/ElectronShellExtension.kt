@@ -19,7 +19,10 @@ abstract class ElectronShellExtension {
     /** The Node.js version the build uses for npm and Electron's tooling. */
     abstract val nodeVersion: Property<String>
 
-    /** The Electron version the app ships. */
+    /**
+     * The Electron version the app ships. The default is the one this plugin release was tested with; an app should
+     * pin its own and keep it updated, since Electron supports only its latest three majors.
+     */
     abstract val electronVersion: Property<String>
 
     /** The `@electron/packager` version that packages it. */
