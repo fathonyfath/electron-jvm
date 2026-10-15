@@ -1,0 +1,16 @@
+html, body, #root { height: 100%; margin: 0; }
+body { font: 14px system-ui, sans-serif; color: #222; background: #fff; }
+.app { display: flex; flex-direction: column; height: 100%; }
+.nav { display: flex; gap: 16px; align-items: center; padding: 10px 24px; border-bottom: 1px solid #e5e5e5; }
+.nav a { color: #555; text-decoration: none; }
+.nav a[aria-current="page"] { color: #000; font-weight: 600; }
+.page { flex: 1; min-height: 0; padding: 24px; box-sizing: border-box; overflow: auto; }
+h1 { font-size: 18px; margin: 0 0 12px; }
+pre { background: #f4f4f4; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+.ask { display: flex; gap: 8px; margin: 16px 0; }
+.ask input { flex: 1; font: inherit; padding: 6px 8px; }
+button { font: inherit; padding: 6px 12px; }
+.log { height: 12em; overflow-y: auto; }
+.editor-page { display: flex; flex-direction: column; height: 100%; gap: 12px; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; }
+.editor { flex: 1; min-height: 0; border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden; }

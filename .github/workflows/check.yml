@@ -1,0 +1,35 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          java-version: "21"
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Cache Node.js download
+        uses: actions/cache@v6
+        with:
+          path: ~/.gradle/nodejs
+          key: node-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Cache node_modules
+        uses: actions/cache@v6
+        with:
+          path: samples/sample/web/node_modules
+          key: npm-${{ runner.os }}-${{ hashFiles('samples/sample/web/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+      - name: check
+        run: ./gradlew check
+      - name: assembleDesktop
+        # jdeps and jlink on the sample's sidecars: the shared runtime and the desktop folder the app ships.
+        run: ./gradlew :samples:shell:assembleDesktop

@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_call:
+    inputs:
+      version:
+        description: Version to publish, without the leading v
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  publish:
+    name: Publish to maven.fathony.dev
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          java-version: "21"
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Publish plugins and library
+        run: |
+          version="${VERSION:-${GITHUB_REF_NAME#v}}"
+          ./gradlew -p plugin publishAllPublicationsToReposiliteRepository -Pelectron.version="$version"
+          ./gradlew -p library publishAllPublicationsToReposiliteRepository -Pelectron.version="$version"
+        env:
+          VERSION: ${{ inputs.version }}
+          ORG_GRADLE_PROJECT_reposiliteUsername: ${{ secrets.REPOSILITE_USERNAME }}
+          ORG_GRADLE_PROJECT_reposilitePassword: ${{ secrets.REPOSILITE_TOKEN }}

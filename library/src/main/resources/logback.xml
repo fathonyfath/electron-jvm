@@ -1,0 +1,12 @@
+<!-- Sidecar logging: info and above on stdout, which the shell forwards with the sidecar's name in front. Without a
+     configuration Logback logs at debug, which includes Ktor noise such as a cancelled event stream on restart. -->
+<configuration>
+  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n</pattern>
+    </encoder>
+  </appender>
+  <root level="INFO">
+    <appender-ref ref="stdout"/>
+  </root>
+</configuration>
