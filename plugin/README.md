@@ -148,8 +148,9 @@ electronShell {
 }
 ```
 
-This repo does the same for its defaults; its [renovate.json](../renovate.json) merges patch and minor updates once
-the checks, which package the sample with them, pass.
+This repo does the same for its defaults. Its [renovate.json](../renovate.json) groups updates into a weekly PR
+each and merges patches and minors once the checks, which package the sample with them, pass; Kotlin, Ktor and
+logback, which reach every app through the library, and every major wait for review.
 
 ## How the Shell Runs Its Sidecars
 

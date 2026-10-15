@@ -1,6 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "schedule": ["before 6am on monday"],
   "customManagers": [
     {
       "description": "Versions in the catalog that no library uses, annotated with where they come from",
@@ -13,14 +14,37 @@
   ],
   "packageRules": [
     {
-      "description": "The plugins' default Node.js, Electron and packager: patches and minors merge on a green check, weekly",
+      "description": "Patches and minors merge on a green check once three days old; majors always wait for review",
+      "matchUpdateTypes": ["minor", "patch"],
+      "minimumReleaseAge": "3 days",
+      "automerge": true
+    },
+    {
+      "description": "Kotlin, Ktor and logback ship in the published library and plugins, and Check only compiles them, so reviewed",
+      "matchPackageNames": ["/^org\\.jetbrains\\.kotlin/", "/^io\\.ktor[.:]/", "/^ch\\.qos\\.logback[.:]/"],
+      "groupName": "jvm",
+      "automerge": false
+    },
+    {
+      "description": "Gradle itself and the Gradle plugins the build applies",
+      "matchDepNames": ["gradle", "com.github.node-gradle.node", "org.gradle.toolchains.foojay-resolver-convention"],
+      "groupName": "gradle"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "description": "The sample's page, which Check builds and type-checks",
+      "matchFileNames": ["samples/sample/web/**"],
+      "groupName": "sample page"
+    },
+    {
+      "description": "The plugins' default Node.js, Electron and packager, which Check packages the sample with",
       "matchDepNames": ["node", "electron", "@electron/packager"],
       "matchFileNames": ["gradle/libs.versions.toml"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "electron platform",
-      "schedule": ["before 6am on monday"],
-      "minimumReleaseAge": "3 days",
-      "automerge": true
+      "groupName": "electron platform"
     },
     {
       "description": "Node.js only builds, so a new major waits until it is approved on the dependency dashboard",

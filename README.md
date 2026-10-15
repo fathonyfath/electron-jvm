@@ -133,8 +133,8 @@ web/
 
 The sidecar serves it with `page("web", Sidecar.contentSecurityPolicy(inlineStyles = true))`: Monaco injects its
 styles at run time, and scripts stay restricted to the sidecar's own files. Unknown paths fall back to `index.html`,
-so the router's routes survive a reload. `npm run typecheck` in `web/` type-checks it; Vite's build does not.
-Gradle installs its packages with `npm ci`, so builds use exactly `package-lock.json`; after changing
+so the router's routes survive a reload. `npm run typecheck` in `web/` type-checks it, and so does
+`./gradlew check`; Vite's build does not. Gradle installs its packages with `npm ci`, so builds use exactly `package-lock.json`; after changing
 `package.json`, run `npm install` in `web/` and commit the updated lock file. Source maps are built for development
 (`run`, live reload) only, so a packaged app carries no page sources.
 
