@@ -5,7 +5,14 @@ ktor = "3.6.0"
 kotlinxSerialization = "1.11.0"
 logback = "1.6.5"
 nodeGradle = "7.1.0"
+# Defaults of electronShell { } and electronSidecar { }, kept current by Renovate (renovate.json) on main and shipped
+# with whatever release comes next. Node.js only builds; Electron is what apps ship, and apps should pin their own.
+# renovate: datasource=node-version depName=node
 nodejs = "24.22.0"
+# renovate: datasource=npm depName=electron
+electronApp = "43.7.7"
+# renovate: datasource=npm depName=@electron/packager
+electronPackager = "20.3.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }

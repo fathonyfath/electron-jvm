@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "description": "Versions in the catalog that no library uses, annotated with where they come from",
+      "customType": "regex",
+      "managerFilePatterns": ["/^gradle/libs\\.versions\\.toml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n(?<propName>\\S+) = \"(?<currentValue>[^\"]+)\""
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "The plugins' default Node.js, Electron and packager: patches and minors merge on a green check, weekly",
+      "matchDepNames": ["node", "electron", "@electron/packager"],
+      "matchFileNames": ["gradle/libs.versions.toml"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "electron platform",
+      "schedule": ["before 6am on monday"],
+      "minimumReleaseAge": "3 days",
+      "automerge": true
+    },
+    {
+      "description": "Node.js only builds, so a new major waits until it is approved on the dependency dashboard",
+      "matchDepNames": ["node"],
+      "matchFileNames": ["gradle/libs.versions.toml"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
