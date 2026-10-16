@@ -15,7 +15,7 @@ import org.gradle.jvm.toolchain.JvmVendorSpec
 
 /**
  * Makes the module an Electron app that ships one Java runtime for its sidecars. The app itself is this plugin's:
- * `generateElectronApp` writes `main.js`, `package.mjs` and a `package.json` with the versions from the extension
+ * `generateElectronApp` writes `main.ts`, `package.mjs` and a `package.json` with the versions from the extension
  * into `build/electron-app`, where npm runs, so the module holds nothing but its build script. Sidecars are added as `sidecar(project(...))` dependencies on modules that apply
  * [ElectronSidecarPlugin]; the `electronShell { }` extension ([ElectronShellExtension]) names the app and its UI
  * sidecar.

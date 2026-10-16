@@ -1,0 +1,17 @@
+{
+  // Types for the shell's main.ts. Electron's come from the sample's app (./gradlew :samples:shell:npmInstall).
+  "compilerOptions": {
+    "target": "es2024",
+    "lib": ["es2024"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "erasableSyntaxOnly": true,
+    "skipLibCheck": true,
+    "paths": { "electron": ["../samples/shell/build/electron-app/node_modules/electron/electron.d.ts"] },
+    "typeRoots": ["../samples/shell/build/electron-app/node_modules/@types"],
+    "types": ["node"]
+  },
+  "include": ["src/main/resources/**/*.ts"]
+}

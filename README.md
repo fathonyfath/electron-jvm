@@ -81,7 +81,7 @@ The [plugin README](plugin/README.md) covers the options, the library's API and 
 ```
 plugin/                     The Gradle plugins, an included build, so the samples build against their source
 ├── src/main/kotlin/        dev.fathony.electron.shell and dev.fathony.electron.sidecar
-└── src/main/resources/     The Electron app (main.js, package.mjs) the shell plugin generates
+└── src/main/resources/     The Electron app (main.ts, package.mjs) the shell plugin generates
 library/                    dev.fathony.electron:electron-sidecar, an included build substituted for the published one
 samples/
 ├── shell/                  The sample app: names its sidecars, nothing else

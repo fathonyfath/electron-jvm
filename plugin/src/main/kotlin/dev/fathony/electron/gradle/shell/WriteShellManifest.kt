@@ -14,7 +14,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
 /**
- * Writes `shell.json`, which tells `main.js` which sidecar serves the window: `{"ui"}`. Fails the build when
+ * Writes `shell.json`, which tells `main.ts` which sidecar serves the window: `{"ui"}`. Fails the build when
  * [uiSidecar] names none of the sidecars, which would otherwise only show as the app quitting at launch.
  */
 @DisableCachingByDefault(because = "Writes one small file; faster than a cache lookup")

@@ -214,11 +214,13 @@ their own.
 
 ### The Electron app
 
-The Electron app's code (`main.js`, `package.mjs`) ships with the shell plugin, under
+The Electron app's code (`main.ts`, `package.mjs`) ships with the shell plugin, under
 `src/main/resources/dev/fathony/electron/gradle/shell/`; edit it there. The plugin writes it, with a `package.json`
 pinning Electron (`electronShell { electronVersion }`) and `@electron/packager`, into `<shell>/build/electron-app`
-(for the sample, `samples/shell/build/electron-app`), where npm runs. To work on it with IntelliJ IDEA's JavaScript
-and Node.js support (IntelliJ IDEA Ultimate):
+(for the sample, `samples/shell/build/electron-app`), where npm runs. `main.ts` ships as it is: Electron's Node strips
+its types, so it uses only syntax that erases. `tsconfig.json` in this folder takes Electron's types from the sample's
+generated app, so the IDE resolves `electron` once `./gradlew :samples:shell:npmInstall` has run. To work on it with
+IntelliJ IDEA's JavaScript and Node.js support (IntelliJ IDEA Ultimate):
 
 - **Node interpreter:** Settings, Languages & Frameworks, Node.js: point it at the Node the build downloaded,
   `~/.gradle/nodejs/node-v<nodejs>-<os>-<arch>/bin/node` (`<nodejs>` from the catalog), so the IDE and Gradle use the
@@ -226,5 +228,5 @@ and Node.js support (IntelliJ IDEA Ultimate):
 - **Debugging the main process:** run `./gradlew :samples:shell:assembleDesktop :samples:shell:npmInstall`, then a
   Node.js run configuration with the interpreter `samples/shell/build/electron-app/node_modules/.bin/electron`, the
   working directory `samples/shell/build/electron-app` and the environment
-  `DESKTOP_DIR=<repo>/samples/shell/build/desktop` stops at breakpoints in the generated `main.js`. The page itself
+  `DESKTOP_DIR=<repo>/samples/shell/build/desktop` stops at breakpoints in the generated `main.ts`. The page itself
   is debugged with Chromium's DevTools (View, Toggle Developer Tools in the app's menu).
