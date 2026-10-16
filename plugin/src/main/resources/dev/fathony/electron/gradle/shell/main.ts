@@ -116,6 +116,9 @@ function sidecarNamed(url: string): string | undefined {
 
 // Headers fetch refuses, or sets itself.
 const DROPPED_HEADERS = ["host", "connection", "keep-alive", "transfer-encoding", "upgrade"];
+// Chromium sends sidecar:// no Sec-Fetch-Site or Origin, so forward cannot tell which frame sent a request, and adds
+// the token to all of them. A second policy on every response keeps frames to sidecars' pages, whatever a page allows.
+const FRAMES_POLICY = `frame-src ${SCHEME}:`;
 
 async function forward(request: Request): Promise<Response> {
   const name = sidecarNamed(request.url);
@@ -142,6 +145,7 @@ async function forward(request: Request): Promise<Response> {
   // fetch has decoded the body already.
   responseHeaders.delete("content-encoding");
   responseHeaders.delete("content-length");
+  responseHeaders.append("Content-Security-Policy", FRAMES_POLICY);
   const location = responseHeaders.get("location");
   if (location) responseHeaders.set("location", toSidecarUrl(location));
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers: responseHeaders });
