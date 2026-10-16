@@ -39,13 +39,13 @@ electronSidecar {
 }
 ```
 
-A sidecar that serves the window also names its page, an npm project in the module, which Gradle builds with
-`npm run build` into the jar's resources:
+A sidecar whose page is built with npm names the npm project's folder; Gradle installs it, builds it with
+`npm run build` and puts the output in the jar's `page/` resources:
 
 ```kotlin
 electronSidecar {
     mainClass = "com.example.MainKt"
-    page("web")
+    npmProject("web")
 }
 ```
 
@@ -56,7 +56,7 @@ the rest of the contract with the shell:
 ```kotlin
 fun main() {
     runSidecar {
-        page("web")   // only the sidecar that serves the window: resources/web at /page
+        page()   // the npm build (resources/page) at /page
         api {
             post("reverse") { call.respondText(call.receiveText().reversed()) }
             sse("events") { send(ServerSentEvent(data = "hello", event = "greeting")) }
@@ -108,7 +108,7 @@ Each kind of route has its own prefix, so none can shadow another:
 
 | Prefix | What | Token |
 |---|---|---|
-| `/page` | `page("web")`: the page's files, and `index.html` for any other path under it, so a single-page app's routes survive a reload | no |
+| `/page` | `page()`: the page's files, and `index.html` for any other path under it, so a single-page app's routes survive a reload | no |
 | `/page` | `page { }`: pages the sidecar renders; a route wins over a file of the same path | yes |
 | `/api` | `api { }` | yes |
 | `/public` | `publicRoutes { }`: for requests from outside the window, such as a link opened in the system browser | no |

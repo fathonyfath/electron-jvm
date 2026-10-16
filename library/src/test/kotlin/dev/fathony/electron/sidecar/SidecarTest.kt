@@ -58,6 +58,12 @@ class SidecarTest {
     }
 
     @Test
+    fun `the built page needs no token, and its routes fall back to index html`() = sidecarTest {
+        assertEquals("<p>built page</p>", client.get("/page/index.html").bodyAsText().trim())
+        assertEquals("<p>built page</p>", client.get("/page/editor").bodyAsText().trim())
+    }
+
+    @Test
     fun `public routes need no token`() = sidecarTest {
         assertEquals("open", client.get("/public/open").bodyAsText())
     }
@@ -78,6 +84,7 @@ class SidecarTest {
             val message = """{"type": "token", "token": "$TOKEN", "data": "$dataDirectory"}"""
             application {
                 sidecar(SidecarToken.fromMessage(message), Peers(), dataDirectory) {
+                    page()
                     page {
                         get("/") { call.respondText("<h1>home</h1>", ContentType.Text.Html) }
                         get("todos") { call.respondText("<ul><li>one</li></ul>", ContentType.Text.Html) }

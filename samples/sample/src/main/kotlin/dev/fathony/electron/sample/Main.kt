@@ -19,24 +19,19 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlinx.coroutines.delay
 
-/** The preview's files, edited on the Preview page. */
 private val PREVIEW_FILES = listOf("index.html", "main.js")
 
-/**
- * The sample sidecar, which serves the window: the React app built from web/, an API that echoes text reversed,
- * waits, fails, or has the worker sidecar shout it, a `tick` event every second, and the preview's files.
- */
+/** The UI sidecar: the React page and its API. */
 fun main() {
     runSidecar {
         // The React app; Monaco injects its styles at run time.
-        page("web", Sidecar.contentSecurityPolicy(inlineStyles = true))
+        page(Sidecar.contentSecurityPolicy(inlineStyles = true))
         val worker = peer("worker")
         val preview = previewDirectory(dataDirectory)
         api {
-            // The preview, which the page shows in an iframe.
             staticPaths("preview/files", preview) {
                 modify { _, call ->
-                    // Framed by the app's page. It runs with the API's access: show only what the user wrote.
+                    // Framed by the page, with the API's access: show only what the user wrote.
                     call.response.headers.append("Content-Security-Policy", Sidecar.contentSecurityPolicy(frames = true))
                     // Saves change the files under the same URLs.
                     call.response.headers.append(HttpHeaders.CacheControl, "no-store")
@@ -80,7 +75,7 @@ private fun previewDirectory(dataDirectory: Path): Path {
     return directory
 }
 
-/** One of [PREVIEW_FILES]; anything else, such as a path, is refused. */
+/** Refuses any other name, such as a path. */
 private fun previewFile(directory: Path, name: String?): Path {
     require(name in PREVIEW_FILES) { "no preview file $name" }
     return directory.resolve(name!!)

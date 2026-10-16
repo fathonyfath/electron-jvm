@@ -16,24 +16,23 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * What a sidecar sets up in [runSidecar], as plain Ktor routes, each kind under its own prefix: the page at `/page`,
- * the API at `/api`, token-free routes at `/public`. Any other path is a 404. The shell adds the token to every request
- * the window makes, so page code needs none.
+ * What a sidecar sets up in [runSidecar], as Ktor routes under their own prefixes: the page at `/page`, the API at
+ * `/api`, token-free routes at `/public`. The shell adds the token to the window's requests.
  */
 class Sidecar internal constructor(
     private val routing: Routing,
     private val token: SidecarToken,
     private val peers: Peers,
-    /** Where this sidecar keeps files across launches: `sidecars/<name>` in the app's data folder. It exists. */
+    /** This sidecar's folder in the app's data folder, kept across launches. */
     val dataDirectory: Path,
 ) {
     private val clients = ConcurrentHashMap<String, HttpClient>()
 
     /**
-     * Serves the classpath resources under [resources] at `/page`, without the token, with `index.html` for any path
-     * that is no file so a single-page app's routes survive a reload. Build the page for that prefix (Vite's `base`).
+     * Serves the classpath folder [resources] (where `npmProject` builds to) at `/page`, without the token; paths that
+     * are no file get `index.html`.
      */
-    fun page(resources: String, contentSecurityPolicy: String = contentSecurityPolicy()) {
+    fun page(contentSecurityPolicy: String = contentSecurityPolicy(), resources: String = "page") {
         routing.staticResources(PAGE, resources) {
             default("index.html")
             modify { _, call -> call.response.headers.append("Content-Security-Policy", contentSecurityPolicy) }
@@ -41,9 +40,8 @@ class Sidecar internal constructor(
     }
 
     /**
-     * Pages this sidecar renders, under `/page`, such as Ktor's HTML builder with HTMX. They require the token, which
-     * the shell adds to navigations, forms and HTMX requests alike. The policy allows no inline scripts or `eval`, so
-     * with HTMX skip `hx-on` and turn off `includeIndicatorStyles`. Call it once.
+     * Pages this sidecar renders under `/page`, such as kotlinx.html with HTMX; they require the token. The policy
+     * allows no inline scripts or `eval`: with HTMX, skip `hx-on` and turn off `includeIndicatorStyles`. Call it once.
      */
     fun page(contentSecurityPolicy: String = contentSecurityPolicy(), routes: Route.() -> Unit) {
         routing.authenticate(AUTHENTICATION) {
@@ -61,18 +59,12 @@ class Sidecar internal constructor(
         }
     }
 
-    /**
-     * Routes under `/public` without the token, for requests from outside the window, such as the system browser. Any
-     * local program can read them, so serve nothing secret.
-     */
+    /** Routes under `/public` without the token, for clients outside the window. Serve nothing secret. */
     fun publicRoutes(routes: Route.() -> Unit) {
         routing.route(PUBLIC, routes)
     }
 
-    /**
-     * A client for the sidecar called [name]: `post("/api/…")` goes to its current port with the token, waiting up to
-     * ten seconds for it to start.
-     */
+    /** A client for sidecar [name]: requests go to its current port with the token, waiting up to 10 s for it. */
     fun peer(name: String): HttpClient = clients.getOrPut(name) {
         HttpClient(CIO) {
             install(
@@ -95,9 +87,8 @@ class Sidecar internal constructor(
         private const val PUBLIC = "/public"
 
         /**
-         * A Content-Security-Policy for a page: everything from this sidecar only, no inline scripts, no framing.
-         * [inlineStyles] allows inline styles (Monaco needs them), [wasm] allows WebAssembly, and [frames] lets this
-         * sidecar's own pages frame it.
+         * A policy allowing only this sidecar's files: no inline scripts, no framing. [inlineStyles] (Monaco needs
+         * them), [wasm] and [frames] (by this sidecar's own pages) loosen it.
          */
         fun contentSecurityPolicy(inlineStyles: Boolean = false, wasm: Boolean = false, frames: Boolean = false): String {
             val scripts = if (wasm) "'self' 'wasm-unsafe-eval'" else "'self'"
@@ -114,7 +105,6 @@ private class PagePolicyConfig {
     var policy: String = Sidecar.contentSecurityPolicy()
 }
 
-/** Adds the Content-Security-Policy to every response of its routes. */
 private val PagePolicy = createRouteScopedPlugin("PagePolicy", ::PagePolicyConfig) {
     val policy = pluginConfig.policy
     onCall { call -> call.response.headers.append("Content-Security-Policy", policy) }

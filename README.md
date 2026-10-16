@@ -57,7 +57,7 @@ plugins {
 
 electronSidecar {
     mainClass = "com.example.MainKt"
-    page("web")   // only the sidecar that serves the window
+    npmProject("web")   // a page built with npm, which page() in main serves
 }
 ```
 
@@ -124,7 +124,7 @@ web/
     styles/app.css
 ```
 
-The sidecar serves it with `page("web", Sidecar.contentSecurityPolicy(inlineStyles = true))`: Monaco injects its
+The sidecar serves it with `page(Sidecar.contentSecurityPolicy(inlineStyles = true))`: Monaco injects its
 styles at run time, and scripts stay restricted to the sidecar's own files. Unknown paths fall back to `index.html`,
 so the router's routes survive a reload. `npm run typecheck` in `web/` type-checks it, and so does
 `./gradlew check`; Vite's build does not. Gradle installs its packages with `npm ci`, so builds use exactly `package-lock.json`; after changing
