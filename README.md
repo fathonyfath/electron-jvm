@@ -7,9 +7,10 @@ API on loopback, and the app ships one Java runtime for all of them. Published a
 - `dev.fathony.electron:electron-sidecar`, the library sidecars are written with (`library/`): `runSidecar`, `page`,
   `api`, `peer`, on Ktor.
 
-`samples/` is an app built with them: `shell` with the UI sidecar `sample` (a React and Monaco page) and `worker`.
-Its Preview page edits a small HTML page that the sidecar keeps in its data folder (`dataDirectory`), serves from its
-API and shows in an iframe (`contentSecurityPolicy(frames = true)`).
+`samples/` is an app built with them: `shell` with the UI sidecar `sample` (a React and Monaco page), `worker`, and
+`htmx`, pages rendered in Kotlin with HTMX; the React page and the server pages link to each other. On the React
+page, Preview edits a small HTML page that `sample` keeps in its data folder (`dataDirectory`), serves from its API and
+shows in an iframe (`contentSecurityPolicy(frames = true)`).
 
 ## Try the Sample
 
@@ -88,7 +89,8 @@ library/                    dev.fathony.electron:electron-sidecar, an included b
 samples/
 ├── shell/                  The sample app: names its sidecars, nothing else
 ├── sample/                 The UI sidecar: its API in Kotlin and its page in web/
-└── worker/                 A second sidecar, called by the UI sidecar as a peer
+├── worker/                 A second sidecar, called by the others as a peer
+└── htmx/                   Server-rendered pages: kotlinx.html and HTMX, no npm build
 gradle/libs.versions.toml   Versions, including the plugins' and library's own
 ```
 

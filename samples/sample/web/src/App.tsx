@@ -4,7 +4,6 @@ import { EditorPage } from "./pages/EditorPage";
 import { HomePage } from "./pages/HomePage";
 import { PreviewPage } from "./pages/PreviewPage";
 
-/** The app, under /page/ where the sidecar serves it. State lives in the stores in state/. */
 export function App() {
   return (
     <Router base="/page">
@@ -28,13 +27,13 @@ function Layout({ children }: { children: ReactNode }) {
         <NavLink href="/">Home</NavLink>
         <NavLink href="/editor">Editor</NavLink>
         <NavLink href="/preview">Preview</NavLink>
+        <a href="sidecar://htmx/page/">Server pages</a>
       </nav>
       <main className="page">{children}</main>
     </div>
   );
 }
 
-/** A link marked while its page is shown. */
 function NavLink({ href, children }: { href: string; children: ReactNode }) {
   const [location] = useLocation();
   return (
