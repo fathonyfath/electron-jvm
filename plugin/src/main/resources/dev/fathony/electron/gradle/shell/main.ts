@@ -122,7 +122,7 @@ function uiOrigin(): string {
 // The page gets the token and the sidecars' ports in the fragment, which never reaches a server.
 function pageUrl(): string {
   const fragment = new URLSearchParams({ token, sidecars: JSON.stringify(ports()) });
-  return `${uiOrigin()}/#${fragment}`;
+  return `${uiOrigin()}/page/#${fragment}`;
 }
 
 // Only web and mail links leave the app; other schemes (file:, ones that start programs) are refused.

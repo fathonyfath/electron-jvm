@@ -14,59 +14,47 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * What a sidecar sets up in [runSidecar]: the page, if this sidecar serves the window, its API, and clients for the
- * other sidecars. Routes are plain Ktor routes; `sse(...)` is available for server-sent events.
+ * What a sidecar sets up in [runSidecar], as plain Ktor routes, each kind under its own prefix: the page at `/page`,
+ * the API at `/api`, token-free routes at `/public`. Any other path is a 404.
  */
 class Sidecar internal constructor(
     private val routing: Routing,
     private val token: SidecarToken,
     private val peers: Peers,
-    /**
-     * The folder this sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder, which
-     * Electron names after the app (`~/Library/Application Support/<app>` on macOS, `%APPDATA%\<app>` on Windows,
-     * `~/.config/<app>` on Linux). It exists by the time [runSidecar] calls its block.
-     */
+    /** Where this sidecar keeps files across launches: `sidecars/<name>` in the app's data folder. It exists. */
     val dataDirectory: Path,
 ) {
     private val clients = ConcurrentHashMap<String, HttpClient>()
 
     /**
-     * Serves the classpath resources under [resources] at `/`, with `index.html` for `/` and for any path that is no
-     * file, so a single-page app's routes survive a reload. The page holds no secret and is served without the token;
-     * the shell hands the page the token in its URL fragment. The page gets [contentSecurityPolicy], which by default
-     * lets it load scripts, styles and data only from this sidecar, so an injected script cannot run and read the
-     * token: scripts go in their own files, not inline.
+     * Serves the classpath resources under [resources] at `/page`, without the token, with `index.html` for any path
+     * that is no file so a single-page app's routes survive a reload. Build the page for that prefix (Vite's `base`).
      */
     fun page(resources: String, contentSecurityPolicy: String = contentSecurityPolicy()) {
-        routing.staticResources("/", resources) {
+        routing.staticResources(PAGE, resources) {
             default("index.html")
             modify { _, call -> call.response.headers.append("Content-Security-Policy", contentSecurityPolicy) }
         }
     }
 
-    /**
-     * Routes under `/api`, each requiring the token.
-     */
+    /** Routes under `/api`, each requiring the token. */
     fun api(routes: Route.() -> Unit) {
         routing.authenticate(AUTHENTICATION) {
-            route("/api", routes)
+            route(API, routes)
         }
     }
 
     /**
-     * Routes outside `/api` that need no token, for what a page loads by URL and so cannot send the token with: the
-     * relative imports of an ES module, a WebAssembly file, the fonts and images they fetch. Any program on this machine
-     * that knows such a URL can read it, so these routes serve nothing secret, and an unguessable path (a random id)
-     * keeps one page's files to that page. The loopback `Host` check still applies, so other web pages cannot read them.
+     * Routes under `/public` without the token, for what a page loads by URL and so cannot send it with: an ES module's
+     * imports, a WebAssembly file. Any local program can read them, so serve nothing secret.
      */
     fun publicRoutes(routes: Route.() -> Unit) {
-        routing.routes()
+        routing.route(PUBLIC, routes)
     }
 
     /**
-     * A client for the sidecar called [name]: requests take a path (`post("/api/…")`), go to that sidecar's current
-     * port with the token, and wait up to ten seconds for it if it has not started yet. Its port can change when it
-     * restarts in development; each request looks it up again.
+     * A client for the sidecar called [name]: `post("/api/…")` goes to its current port with the token, waiting up to
+     * ten seconds for it to start.
      */
     fun peer(name: String): HttpClient = clients.getOrPut(name) {
         HttpClient(CIO) {
@@ -85,13 +73,14 @@ class Sidecar internal constructor(
 
     companion object {
         internal const val AUTHENTICATION = "sidecar-token"
+        private const val PAGE = "/page"
+        private const val API = "/api"
+        private const val PUBLIC = "/public"
 
         /**
-         * A Content-Security-Policy for [page]: everything from this sidecar only, no inline scripts, no plugins, no
-         * framing. [inlineStyles] allows `<style>` elements and `style` attributes, which Monaco needs; an injected
-         * style cannot send anything anywhere, since images and requests stay limited to this sidecar. [wasm] allows
-         * compiling WebAssembly, which a Compose wasm page needs. [frames] lets this sidecar's own pages show its pages in
-         * an iframe, such as an editor showing a preview; other origins still cannot frame them.
+         * A Content-Security-Policy for a page: everything from this sidecar only, no inline scripts, no framing.
+         * [inlineStyles] allows inline styles (Monaco needs them), [wasm] allows WebAssembly, and [frames] lets this
+         * sidecar's own pages frame it.
          */
         fun contentSecurityPolicy(inlineStyles: Boolean = false, wasm: Boolean = false, frames: Boolean = false): String {
             val scripts = if (wasm) "'self' 'wasm-unsafe-eval'" else "'self'"
@@ -103,3 +92,4 @@ class Sidecar internal constructor(
         }
     }
 }
+

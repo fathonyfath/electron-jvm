@@ -7,7 +7,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 
-const router = createRouter({ routeTree });
+// The sidecar serves the page at /page/.
+const router = createRouter({ routeTree, basepath: "/page" });
 
 declare module "@tanstack/react-router" {
   interface Register {

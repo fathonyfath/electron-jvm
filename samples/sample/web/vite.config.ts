@@ -5,6 +5,8 @@ import { defineConfig } from "vite";
 export default defineConfig({
   // The router plugin generates src/routeTree.gen.ts from src/routes; it must run before React's.
   plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), react()],
+  // The sidecar serves the page at /page/.
+  base: "/page/",
   build: {
     // Gradle's buildPage passes its output directory; a plain `npm run build` writes dist/.
     outDir: process.env.PAGE_OUT ?? "dist",

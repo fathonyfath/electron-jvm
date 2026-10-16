@@ -56,7 +56,7 @@ with the shell:
 ```kotlin
 fun main() {
     runSidecar {
-        page("web")   // only the sidecar that serves the window: resources/web at /
+        page("web")   // only the sidecar that serves the window: resources/web at /page
         api {
             post("reverse") { call.respondText(call.receiveText().reversed()) }
             sse("events") { send(ServerSentEvent(data = "hello", event = "greeting")) }
@@ -66,9 +66,13 @@ fun main() {
 ```
 
 A page that loads files by URL, which cannot carry the token (an ES module's relative imports, a WebAssembly file),
-gets them from `publicRoutes { }`, routes outside `/api` without the token. They serve nothing secret; an unguessable
+gets them from `publicRoutes { }`, routes under `/public` without the token. They serve nothing secret; an unguessable
 path keeps one page's files to that page. `Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile
 WebAssembly, and `frames = true` lets the sidecar's own pages show its pages in an iframe.
+
+Each kind of route has its own prefix, so none can shadow another: the page at `/page`, the API at `/api`, public
+routes at `/public`; any other path is a 404. A built page is built for its prefix: its asset URLs start with `/page/`
+(Vite's `base: "/page/"`) and its router's base path is `/page`.
 
 `dataDirectory` is the folder a sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder,
 which Electron names after `appName` (`~/Library/Application Support/<appName>` on macOS, `%APPDATA%\<appName>` on
@@ -169,7 +173,7 @@ logback, which reach every app through the library, and every major wait for rev
 At launch the shell starts every sidecar as its own process on `runtime/bin/java`, writes it the per-launch token as
 the first JSON line on its stdin (not in the environment, which other processes of the same user can read), waits for
 `SIDECAR_READY <port>` on its stdout, tells each sidecar the others' ports with a further line, and opens a window on
-the UI sidecar's `http://127.0.0.1:<port>/`.
+the UI sidecar's `http://127.0.0.1:<port>/page/`.
 
 The page talks only to the UI sidecar, which calls the others for it. The token and every sidecar's port arrive in
 the page's URL fragment. The page talks to the JVM with `fetch` and `EventSource`, sending the token as

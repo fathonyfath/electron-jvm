@@ -47,4 +47,10 @@ dependencies {
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.status.pages)
     runtimeOnly(libs.logback.classic)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.ktor.server.test.host)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
