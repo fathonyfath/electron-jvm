@@ -10,6 +10,7 @@ import io.ktor.server.http.content.staticResources
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.route
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -20,6 +21,12 @@ class Sidecar internal constructor(
     private val routing: Routing,
     private val token: SidecarToken,
     private val peers: Peers,
+    /**
+     * The folder this sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder, which
+     * Electron names after the app (`~/Library/Application Support/<app>` on macOS, `%APPDATA%\<app>` on Windows,
+     * `~/.config/<app>` on Linux). It exists by the time [runSidecar] calls its block.
+     */
+    val dataDirectory: Path,
 ) {
     private val clients = ConcurrentHashMap<String, HttpClient>()
 
@@ -44,6 +51,16 @@ class Sidecar internal constructor(
         routing.authenticate(AUTHENTICATION) {
             route("/api", routes)
         }
+    }
+
+    /**
+     * Routes outside `/api` that need no token, for what a page loads by URL and so cannot send the token with: the
+     * relative imports of an ES module, a WebAssembly file, the fonts and images they fetch. Any program on this machine
+     * that knows such a URL can read it, so these routes serve nothing secret, and an unguessable path (a random id)
+     * keeps one page's files to that page. The loopback `Host` check still applies, so other web pages cannot read them.
+     */
+    fun publicRoutes(routes: Route.() -> Unit) {
+        routing.routes()
     }
 
     /**
@@ -73,14 +90,16 @@ class Sidecar internal constructor(
          * A Content-Security-Policy for [page]: everything from this sidecar only, no inline scripts, no plugins, no
          * framing. [inlineStyles] allows `<style>` elements and `style` attributes, which Monaco needs; an injected
          * style cannot send anything anywhere, since images and requests stay limited to this sidecar. [wasm] allows
-         * compiling WebAssembly, which a Compose wasm page needs.
+         * compiling WebAssembly, which a Compose wasm page needs. [frames] lets this sidecar's own pages show its pages in
+         * an iframe, such as an editor showing a preview; other origins still cannot frame them.
          */
-        fun contentSecurityPolicy(inlineStyles: Boolean = false, wasm: Boolean = false): String {
+        fun contentSecurityPolicy(inlineStyles: Boolean = false, wasm: Boolean = false, frames: Boolean = false): String {
             val scripts = if (wasm) "'self' 'wasm-unsafe-eval'" else "'self'"
             val styles = if (inlineStyles) "'self' 'unsafe-inline'" else "'self'"
+            val ancestors = if (frames) "'self'" else "'none'"
             return "default-src 'self'; script-src $scripts; style-src $styles; img-src 'self' data:; " +
                 "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; " +
-                "frame-ancestors 'none'"
+                "frame-ancestors $ancestors"
         }
     }
 }

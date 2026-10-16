@@ -10,12 +10,17 @@ import org.gradle.work.DisableCachingByDefault
 
 /**
  * Writes the Electron app the shell runs: `main.js` and `package.mjs`, which ship with this plugin, and a
- * `package.json` pinning Electron and `@electron/packager` to the versions in `electronShell { }`.
+ * `package.json` pinning Electron and `@electron/packager` to the versions in `electronShell { }`, with the app's name
+ * as `productName`, so the app's data folder has that name in development and packaged alike.
  */
 @DisableCachingByDefault(because = "Writes a few files from resources; faster than a cache lookup")
 abstract class GenerateElectronApp : DefaultTask() {
     @get:Input
     abstract val packageName: Property<String>
+
+    /** The app's name, which Electron names the app's data folder after (`app.getPath("userData")`). */
+    @get:Input
+    abstract val productName: Property<String>
 
     @get:Input
     abstract val electronVersion: Property<String>
@@ -39,6 +44,7 @@ abstract class GenerateElectronApp : DefaultTask() {
             """
             |{
             |  "name": "${packageName.get()}",
+            |  "productName": ${json(productName.get())},
             |  "private": true,
             |  "version": "1.0.0",
             |  "main": "main.js",
@@ -57,6 +63,9 @@ abstract class GenerateElectronApp : DefaultTask() {
 
     private companion object {
         val FILES = listOf("main.js", "package.mjs")
+
+        fun json(text: String): String =
+            "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
         fun resource(name: String): String =
             checkNotNull(GenerateElectronApp::class.java.getResourceAsStream(name)) { "missing plugin resource $name" }

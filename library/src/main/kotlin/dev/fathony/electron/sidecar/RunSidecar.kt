@@ -15,6 +15,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
+import kotlin.io.path.createDirectories
 import kotlin.system.exitProcess
 import kotlinx.coroutines.runBlocking
 
@@ -22,7 +23,8 @@ import kotlinx.coroutines.runBlocking
  * Runs `main` as a sidecar of the Electron shell: a Ktor server on a free loopback port, set up by [configure] (see
  * [Sidecar], which also gives clients for the other sidecars).
  *
- * The shell's first line on stdin is the per-launch token, which every route under `/api` requires, as
+ * The shell's first line on stdin is the per-launch token, with the sidecar's data folder ([Sidecar.dataDirectory]).
+ * Every route under `/api` requires the token, as
  * `Authorization: Bearer <token>` or, for `EventSource`, which cannot send headers, as `?token=`. Requests whose
  * `Host` is not this server's own loopback address are refused, which keeps a web page that has rebound its domain to
  * 127.0.0.1 out. A handler's exception becomes a 500 with its message. Once the server listens this prints
@@ -34,7 +36,9 @@ fun runSidecar(configure: Sidecar.() -> Unit): Nothing {
     val input = System.`in`.bufferedReader()
     val peers = Peers()
     val port = try {
-        val token = SidecarToken.fromMessage(input.readLine())
+        val first = input.readLine()
+        val token = SidecarToken.fromMessage(first)
+        val dataDirectory = SidecarToken.dataDirectory(first).createDirectories()
         val server = embeddedServer(CIO, host = "127.0.0.1", port = 0) {
             install(LoopbackHostOnly)
             install(SSE)
@@ -52,7 +56,7 @@ fun runSidecar(configure: Sidecar.() -> Unit): Nothing {
                     authenticate { credential -> if (token.matches(credential.token)) UserIdPrincipal("page") else null }
                 }
             }
-            routing { Sidecar(this, token, peers).configure() }
+            routing { Sidecar(this, token, peers, dataDirectory).configure() }
         }
         server.start(wait = false)
         Runtime.getRuntime().addShutdownHook(Thread { server.stop(100, 1_000) })

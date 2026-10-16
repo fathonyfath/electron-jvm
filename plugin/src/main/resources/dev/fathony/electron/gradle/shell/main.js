@@ -30,7 +30,11 @@ function startSidecar(name) {
   const { mainClass } = readJson(path.join(dir, "sidecar.json"));
   const child = spawn(java, ["-cp", path.join(dir, "lib", "*"), mainClass], { stdio: ["pipe", "pipe", "inherit"] });
   // The token goes first on stdin rather than in the environment, which other processes of the same user can read.
-  child.stdin.write(JSON.stringify({ type: "token", token }) + "\n");
+  // With it goes the folder the sidecar keeps its files in: its own one in the app's data folder (Electron's userData,
+  // named after the app: ~/Library/Application Support/<app> on macOS, %APPDATA%\<app> on Windows, ~/.config/<app> on
+  // Linux).
+  const data = path.join(app.getPath("userData"), "sidecars", name);
+  child.stdin.write(JSON.stringify({ type: "token", token, data }) + "\n");
   return new Promise((resolve, reject) => {
     readline.createInterface({ input: child.stdout }).on("line", (line) => {
       const ready = /^SIDECAR_READY (\d+)$/.exec(line);
