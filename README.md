@@ -23,9 +23,9 @@ cd electron-jvm
 
 ## Installation
 
-The plugins and the library are published to [maven.fathony.dev](https://maven.fathony.dev). The sidecar plugin adds
-the library at its own version, so the repository goes in both places in `settings.gradle.kts`, next to the Node.js
-repository the plugins take Node from (they add no repository to the project):
+The plugins and the library are published to [maven.fathony.dev](https://maven.fathony.dev). Name it for the
+plugins in `settings.gradle.kts`; the plugins declare everything else on the projects that apply them (Maven Central,
+the library's repository, and node-gradle's Node.js download site):
 
 ```kotlin
 pluginManagement {
@@ -39,21 +39,9 @@ plugins {
     // Downloads Temurin for the shared runtime when it is not installed.
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
-
-dependencyResolutionManagement {
-    repositories {
-        mavenCentral()
-        maven("https://maven.fathony.dev/releases")
-        ivy {
-            name = "Node.js"
-            setUrl("https://nodejs.org/dist/")
-            patternLayout { artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]") }
-            metadataSources { artifact() }
-            content { includeModule("org.nodejs", "node") }
-        }
-    }
-}
 ```
+
+Since the plugins add project repositories, the settings must not use `RepositoriesMode.FAIL_ON_PROJECT_REPOS`.
 
 Then a sidecar is an ordinary JVM program with a `main`, and the shell lists its sidecars:
 

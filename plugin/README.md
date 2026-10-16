@@ -11,9 +11,12 @@ plugins {
 }
 ```
 
-The plugins are published to [maven.fathony.dev](https://maven.fathony.dev). The sidecar plugin adds the library,
-`dev.fathony.electron:electron-sidecar`, at its own version, so the repository goes in both `pluginManagement` and
-`dependencyResolutionManagement`; the [root README](../README.md#installation) has the full settings.
+The plugins are published to [maven.fathony.dev](https://maven.fathony.dev), which a consuming build names in
+`pluginManagement`; the [root README](../README.md#installation) has the settings. The sidecar plugin adds the library,
+`dev.fathony.electron:electron-sidecar`, at its own version, and declares the repositories it resolves from on the
+project: Maven Central, and `maven.fathony.dev` for the `dev.fathony.electron` group only (`-PelectronRepository=<url>`
+overrides it). node-gradle adds Node.js's download site the same way. Project repositories make Gradle ignore the
+ones in settings, and `RepositoriesMode.FAIL_ON_PROJECT_REPOS` refuses them.
 
 | Plugin | What it sets up | Tasks it adds |
 |---|---|---|

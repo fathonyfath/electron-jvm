@@ -15,18 +15,9 @@ plugins {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // The samples get their repositories from the plugins, as any consuming build does.
     repositories {
         mavenCentral()
-        // Node.js for npm, which the plugins configure node-gradle to take from here: with repositories in settings
-        // only, the plugin may not add its own.
-        ivy {
-            name = "Node.js"
-            setUrl("https://nodejs.org/dist/")
-            patternLayout { artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]") }
-            metadataSources { artifact() }
-            content { includeModule("org.nodejs", "node") }
-        }
     }
 }
 
