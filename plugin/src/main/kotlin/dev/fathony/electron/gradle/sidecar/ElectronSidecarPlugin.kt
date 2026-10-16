@@ -22,6 +22,10 @@ import org.gradle.jvm.toolchain.JavaToolchainService
  * its lock file and built by `buildPage` into the jar's resources under `web/`, so the continuous build of live reload
  * rebuilds it on every change as well. Development builds pass `PAGE_SOURCE_MAPS=true`.
  *
+ * The plugin declares the repositories a sidecar resolves from, so a consuming build only names the plugins'
+ * repository in `pluginManagement`: Maven Central, and `maven.fathony.dev` for `dev.fathony.electron` only, which the
+ * `electronRepository` property overrides. Project repositories make Gradle ignore the ones in settings.
+ *
  * The contract at run time: the shell runs `<mainClass>` on its `runtime/bin/java` with every jar in `lib/` on the
  * class path, writes JSON lines to its stdin (the token first, then the other sidecars' ports), reads
  * `SIDECAR_READY <port>` from its stdout, and closes stdin when the sidecar should exit.
@@ -34,6 +38,13 @@ class ElectronSidecarPlugin : Plugin<Project> {
         sidecar.modules.convention(emptyList())
         sidecar.nodeVersion.convention(DEFAULT_NODE_VERSION)
         sidecar.library.convention(LIBRARY)
+
+        project.repositories.mavenCentral()
+        project.repositories.maven {
+            name = "electron"
+            setUrl(project.findProperty("electronRepository") ?: REPOSITORY)
+            mavenContent { includeGroup("dev.fathony.electron") }
+        }
 
         project.plugins.withId("java") {
             project.dependencies.addProvider("implementation", sidecar.library)
@@ -95,6 +106,9 @@ class ElectronSidecarPlugin : Plugin<Project> {
     companion object {
         /** The Usage attribute the shell asks for. */
         const val USAGE = "electron-sidecar"
+
+        /** Where the library is published. */
+        const val REPOSITORY = "https://maven.fathony.dev/releases"
 
         /** The library at the plugin's own version, which a build containing the library substitutes. */
         const val LIBRARY = "dev.fathony.electron:electron-sidecar:${ElectronVersions.ELECTRON}"
