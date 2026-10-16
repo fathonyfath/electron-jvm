@@ -1,10 +1,8 @@
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // The router plugin generates src/routeTree.gen.ts from src/routes; it must run before React's.
-  plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), react()],
+  plugins: [react()],
   // The sidecar serves the page at /page/.
   base: "/page/",
   build: {

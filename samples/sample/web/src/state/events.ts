@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { listen } from "../api/client";
+import { listen } from "electron-sidecar-client";
 
 /** Lines for the log: calls the page made and events the sidecar pushed. */
 interface EventLog {

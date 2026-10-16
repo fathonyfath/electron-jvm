@@ -1,10 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ApiError, call } from "../api/client";
+import { ApiError, call } from "electron-sidecar-client";
 import { Log } from "../components/Log";
 import { useEventLog } from "../state/events";
-
-export const Route = createFileRoute("/")({ component: Home });
 
 const wasmGc = (() => {
   try {
@@ -15,7 +12,7 @@ const wasmGc = (() => {
   }
 })();
 
-function Home() {
+export function HomePage() {
   const [text, setText] = useState("hello from the page");
   const add = useEventLog((log) => log.add);
 
@@ -34,9 +31,7 @@ function Home() {
         The page and its API come from a JVM sidecar over HTTP; Electron only draws the window.{" "}
         <a href="https://www.electronjs.org/">Links</a> open in the system browser.
       </p>
-      <pre className="info">
-        {`user agent: ${navigator.userAgent}\nwasmGC: ${wasmGc}`}
-      </pre>
+      <pre className="info">{`user agent: ${navigator.userAgent}\nwasmGC: ${wasmGc}`}</pre>
       <form
         className="ask"
         onSubmit={(e) => {
