@@ -10,6 +10,7 @@ import io.ktor.server.http.content.staticResources
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.route
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -20,6 +21,12 @@ class Sidecar internal constructor(
     private val routing: Routing,
     private val token: SidecarToken,
     private val peers: Peers,
+    /**
+     * The folder this sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder, which
+     * Electron names after the app (`~/Library/Application Support/<app>` on macOS, `%APPDATA%\<app>` on Windows,
+     * `~/.config/<app>` on Linux). It exists by the time [runSidecar] calls its block.
+     */
+    val dataDirectory: Path,
 ) {
     private val clients = ConcurrentHashMap<String, HttpClient>()
 

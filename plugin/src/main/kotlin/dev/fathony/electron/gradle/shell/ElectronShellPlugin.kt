@@ -40,6 +40,7 @@ class ElectronShellPlugin : Plugin<Project> {
         val app = project.layout.buildDirectory.dir("electron-app")
         val generate = project.tasks.register("generateElectronApp", GenerateElectronApp::class.java) {
             packageName.set(project.name.lowercase().replace(Regex("[^a-z0-9-]"), "-"))
+            productName.set(shell.appName)
             electronVersion.set(shell.electronVersion)
             packagerVersion.set(shell.packagerVersion)
             output.set(app)
