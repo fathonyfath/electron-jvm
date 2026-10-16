@@ -47,6 +47,16 @@ class Sidecar internal constructor(
     }
 
     /**
+     * Routes outside `/api` that need no token, for what a page loads by URL and so cannot send the token with: the
+     * relative imports of an ES module, a WebAssembly file, the fonts and images they fetch. Any program on this machine
+     * that knows such a URL can read it, so these routes serve nothing secret, and an unguessable path (a random id)
+     * keeps one page's files to that page. The loopback `Host` check still applies, so other web pages cannot read them.
+     */
+    fun publicRoutes(routes: Route.() -> Unit) {
+        routing.routes()
+    }
+
+    /**
      * A client for the sidecar called [name]: requests take a path (`post("/api/…")`), go to that sidecar's current
      * port with the token, and wait up to ten seconds for it if it has not started yet. Its port can change when it
      * restarts in development; each request looks it up again.
@@ -73,14 +83,16 @@ class Sidecar internal constructor(
          * A Content-Security-Policy for [page]: everything from this sidecar only, no inline scripts, no plugins, no
          * framing. [inlineStyles] allows `<style>` elements and `style` attributes, which Monaco needs; an injected
          * style cannot send anything anywhere, since images and requests stay limited to this sidecar. [wasm] allows
-         * compiling WebAssembly, which a Compose wasm page needs.
+         * compiling WebAssembly, which a Compose wasm page needs. [frames] lets this sidecar's own pages show its pages in
+         * an iframe, such as an editor showing a preview; other origins still cannot frame them.
          */
-        fun contentSecurityPolicy(inlineStyles: Boolean = false, wasm: Boolean = false): String {
+        fun contentSecurityPolicy(inlineStyles: Boolean = false, wasm: Boolean = false, frames: Boolean = false): String {
             val scripts = if (wasm) "'self' 'wasm-unsafe-eval'" else "'self'"
             val styles = if (inlineStyles) "'self' 'unsafe-inline'" else "'self'"
+            val ancestors = if (frames) "'self'" else "'none'"
             return "default-src 'self'; script-src $scripts; style-src $styles; img-src 'self' data:; " +
                 "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; " +
-                "frame-ancestors 'none'"
+                "frame-ancestors $ancestors"
         }
     }
 }

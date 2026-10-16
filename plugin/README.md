@@ -65,6 +65,11 @@ fun main() {
 }
 ```
 
+A page that loads files by URL, which cannot carry the token (an ES module's relative imports, a WebAssembly file),
+gets them from `publicRoutes { }`, routes outside `/api` without the token. They serve nothing secret; an unguessable
+path keeps one page's files to that page. `Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile
+WebAssembly, and `frames = true` lets the sidecar's own pages show its pages in an iframe.
+
 Sidecars call each other through `peer(name)`, a Ktor client that adds the token and sends each request to the peer's
 current port, waiting up to ten seconds for a peer that has not started yet:
 
