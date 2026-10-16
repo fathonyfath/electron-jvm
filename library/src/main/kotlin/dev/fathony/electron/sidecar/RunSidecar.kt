@@ -2,14 +2,12 @@ package dev.fathony.electron.sidecar
 
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.auth.HttpAuthHeader
 import io.ktor.server.application.Application
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.bearer
-import io.ktor.server.auth.parseAuthorizationHeader
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -22,12 +20,8 @@ import kotlin.system.exitProcess
 import kotlinx.coroutines.runBlocking
 
 /**
- * Runs `main` as a sidecar: a Ktor server on a free loopback port, set up by [configure].
- *
- * Reads the token and data folder from the shell's first stdin line, prints `SIDECAR_READY <port>`, then reads the
- * peers' ports until stdin closes, and exits. Protected routes take the token as `Authorization: Bearer`, or as
- * `?token=` from `EventSource`, which cannot send headers. A foreign `Host` gets a 403, an exception a 500 with its
- * message.
+ * Runs `main` as a sidecar: a Ktor server on a free loopback port, set up by [configure]. Reads the token and data
+ * folder from stdin, prints `SIDECAR_READY <port>`, then takes the peers' ports from stdin until it closes, and exits.
  */
 fun runSidecar(configure: Sidecar.() -> Unit): Nothing {
     val input = System.`in`.bufferedReader()
@@ -52,7 +46,6 @@ fun runSidecar(configure: Sidecar.() -> Unit): Nothing {
     exitProcess(0)
 }
 
-/** The server: Host check, token and error handling around the routes [configure] declares. */
 internal fun Application.sidecar(token: SidecarToken, peers: Peers, dataDirectory: Path, configure: Sidecar.() -> Unit) {
     install(LoopbackHostOnly)
     install(SSE)
@@ -63,17 +56,13 @@ internal fun Application.sidecar(token: SidecarToken, peers: Peers, dataDirector
     }
     install(Authentication) {
         bearer(Sidecar.AUTHENTICATION) {
-            authHeader { call ->
-                call.request.parseAuthorizationHeader()
-                    ?: call.request.queryParameters["token"]?.let { HttpAuthHeader.Single("Bearer", it) }
-            }
             authenticate { credential -> if (token.matches(credential.token)) UserIdPrincipal("page") else null }
         }
     }
     routing { Sidecar(this, token, peers, dataDirectory).configure() }
 }
 
-/** Refuses a `Host` other than this server's loopback address, which stops a web page rebound to 127.0.0.1. */
+/** Stops web pages whose domain was rebound to 127.0.0.1: their `Host` is not this server's. */
 private val LoopbackHostOnly = createApplicationPlugin("LoopbackHostOnly") {
     onCall { call ->
         val port = call.request.local.localPort

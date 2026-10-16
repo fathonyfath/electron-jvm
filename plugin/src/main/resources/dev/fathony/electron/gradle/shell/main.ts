@@ -1,7 +1,7 @@
-// Electron's main process: starts the sidecars, opens the UI sidecar's page, and stops them all on quit. In
-// development it also restarts a sidecar when Gradle rebuilds it.
-// Electron runs this file as it is (Node strips the types), so it uses only erasable syntax: no enums or namespaces.
-import { app, BrowserWindow, shell } from "electron";
+// Electron's main process: starts the sidecars and stops them on quit, and shows their pages as sidecar://<name>/…,
+// forwarding each request to the sidecar's port with the token. Fixed origins keep the window's storage.
+// Electron runs this file as it is (Node strips the types), so it uses only erasable syntax.
+import { app, BrowserWindow, protocol, shell } from "electron";
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -9,14 +9,12 @@ import path from "node:path";
 import readline from "node:readline";
 import type { Readable, Writable } from "node:stream";
 
-/** `sidecars/<name>/sidecar.json`, written by the sidecar plugin. */
 interface SidecarManifest {
   name: string;
   mainClass: string;
   modules: string[];
 }
 
-/** `shell.json`: which sidecar serves the window. */
 interface ShellManifest {
   ui: string;
 }
@@ -28,16 +26,16 @@ interface RunningSidecar {
   port: number;
 }
 
-// Packaged, the desktop folder is in the app's resources; in development Gradle passes it.
 const desktopDir = app.isPackaged ? path.join(process.resourcesPath, "desktop") : developmentDesktopDir();
 const sidecarsDir = path.join(desktopDir, "sidecars");
 const java = path.join(desktopDir, "runtime", "bin", process.platform === "win32" ? "java.exe" : "java");
-
-/** The per-launch secret every sidecar checks. */
 const token = crypto.randomBytes(32).toString("hex");
+const SCHEME = "sidecar";
 
+// All sidecars, running or not, so their URLs stay valid while one restarts.
+let names: string[] = [];
 const sidecars = new Map<string, RunningSidecar>();
-/** Sidecars restarted on purpose, whose exit must not end the app. */
+// Restarted on purpose: their exit must not end the app.
 const restarting = new Set<string>();
 let window: BrowserWindow | null = null;
 let uiName = "";
@@ -57,9 +55,7 @@ function startSidecar(name: string): Promise<void> {
   const dir = path.join(sidecarsDir, name);
   const { mainClass } = readJson<SidecarManifest>(path.join(dir, "sidecar.json"));
   const child = spawn(java, ["-cp", path.join(dir, "lib", "*"), mainClass], { stdio: ["pipe", "pipe", "inherit"] });
-
-  // The token goes on stdin, not in the environment, which other processes can read. With it goes the sidecar's own
-  // data folder, inside the app's.
+  // On stdin, not in the environment, which other processes can read.
   const data = path.join(app.getPath("userData"), "sidecars", name);
   send(child, { type: "token", token, data });
 
@@ -76,7 +72,6 @@ function startSidecar(name: string): Promise<void> {
     child.once("error", reject);
     child.once("exit", (code) => {
       reject(new Error(`sidecar ${name} exited with ${code} before it was ready`));
-      // Losing a sidecar ends the app, unless it is restarting or the app is quitting.
       if (!restarting.has(name) && !quitting) {
         console.log(`[${name}] exited with ${code}`);
         app.quit();
@@ -98,34 +93,67 @@ function stopSidecar(name: string): Promise<void> {
   });
 }
 
-/** One JSON line on a sidecar's stdin. */
 function send(child: SidecarProcess, message: object): void {
   if (child.stdin.writable) child.stdin.write(JSON.stringify(message) + "\n");
 }
 
-function ports(): Record<string, number> {
-  return Object.fromEntries([...sidecars].map(([name, { port }]) => [name, port]));
-}
-
-// Every sidecar gets all ports, again whenever a restart moves one.
 function sendPeers(): void {
-  const peers = ports();
+  const peers = Object.fromEntries([...sidecars].map(([name, { port }]) => [name, port]));
   for (const { child } of sidecars.values()) send(child, { type: "peers", peers });
 }
 
-function uiOrigin(): string {
-  const ui = sidecars.get(uiName);
-  if (!ui) throw new Error(`the UI sidecar ${uiName} is not running`);
-  return `http://127.0.0.1:${ui.port}`;
-}
-
-// The page gets the token and the sidecars' ports in the fragment, which never reaches a server.
 function pageUrl(): string {
-  const fragment = new URLSearchParams({ token, sidecars: JSON.stringify(ports()) });
-  return `${uiOrigin()}/page/#${fragment}`;
+  return `${SCHEME}://${uiName}/page/`;
 }
 
-// Only web and mail links leave the app; other schemes (file:, ones that start programs) are refused.
+function sidecarNamed(url: string): string | undefined {
+  if (!URL.canParse(url)) return undefined;
+  const { protocol, hostname } = new URL(url);
+  if (protocol !== `${SCHEME}:`) return undefined;
+  // URLs lower-case their host.
+  return names.find((name) => name.toLowerCase() === hostname);
+}
+
+// Headers fetch refuses, or sets itself.
+const DROPPED_HEADERS = ["host", "connection", "keep-alive", "transfer-encoding", "upgrade"];
+
+async function forward(request: Request): Promise<Response> {
+  const name = sidecarNamed(request.url);
+  if (!name) return new Response("no such sidecar", { status: 404 });
+  const { pathname, search } = new URL(request.url);
+  const headers = new Headers(request.headers);
+  for (const header of DROPPED_HEADERS) headers.delete(header);
+  headers.set("Authorization", `Bearer ${token}`);
+  let response: Response;
+  try {
+    const port = sidecars.get(name)?.port;
+    if (port === undefined) throw new Error("not running");
+    response = await fetch(`http://127.0.0.1:${port}${pathname}${search}`, {
+      method: request.method,
+      headers,
+      body: request.body,
+      duplex: "half",
+      redirect: "manual",
+    });
+  } catch {
+    return new Response(`sidecar ${name} is not answering`, { status: 502 });
+  }
+  const responseHeaders = new Headers(response.headers);
+  // fetch has decoded the body already.
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  const location = responseHeaders.get("location");
+  if (location) responseHeaders.set("location", toSidecarUrl(location));
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers: responseHeaders });
+}
+
+function toSidecarUrl(location: string): string {
+  if (!URL.canParse(location)) return location;
+  const url = new URL(location);
+  const name = [...sidecars].find(([, { port }]) => url.hostname === "127.0.0.1" && Number(url.port) === port)?.[0];
+  return name ? `${SCHEME}://${name}${url.pathname}${url.search}${url.hash}` : location;
+}
+
 function openOutside(url: string): void {
   const protocol = URL.canParse(url) ? new URL(url).protocol : null;
   if (protocol === "https:" || protocol === "http:" || protocol === "mailto:") {
@@ -143,23 +171,22 @@ function openWindow(): void {
     minHeight: 400,
     webPreferences: { contextIsolation: true, sandbox: true },
   });
-  // The window shows only the UI sidecar; anything else opens in the system browser.
   opened.webContents.setWindowOpenHandler(({ url }) => {
     openOutside(url);
     return { action: "deny" };
   });
-  opened.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(uiOrigin())) {
-      event.preventDefault();
-      openOutside(url);
-    }
-  });
+  const stayOnSidecars = (event: Electron.Event, url: string) => {
+    if (sidecarNamed(url)) return;
+    event.preventDefault();
+    openOutside(url);
+  };
+  opened.webContents.on("will-navigate", stayOnSidecars);
+  opened.webContents.on("will-redirect", stayOnSidecars);
   void opened.loadURL(pageUrl());
   window = opened;
 }
 
-// Development only: Gradle rebuilds continuously; a sidecar restarts once its folder has been quiet for a moment, so a
-// half-written build never starts.
+// Development only: a sidecar restarts once its folder has been quiet a moment, so a half-written build never starts.
 function watchForChanges(watchCommand: string): void {
   const [command, ...args] = JSON.parse(watchCommand) as string[];
   const gradle = spawn(command, args, { stdio: ["ignore", "inherit", "inherit"] });
@@ -182,7 +209,7 @@ async function restart(name: string): Promise<void> {
     await stopSidecar(name);
     await startSidecar(name);
     sendPeers();
-    void window?.loadURL(pageUrl());
+    window?.webContents.reload();
   } catch (error) {
     // A broken build: the sidecar stays down until the next change fixes it.
     console.error((error as Error).message);
@@ -191,7 +218,11 @@ async function restart(name: string): Promise<void> {
   }
 }
 
-// One instance: a second launch focuses the first window.
+// Has to run before the app is ready.
+protocol.registerSchemesAsPrivileged([
+  { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
+]);
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -204,8 +235,10 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     try {
       uiName = readJson<ShellManifest>(path.join(desktopDir, "shell.json")).ui;
-      await Promise.all(fs.readdirSync(sidecarsDir).map(startSidecar));
+      names = fs.readdirSync(sidecarsDir);
+      await Promise.all(names.map(startSidecar));
       sendPeers();
+      protocol.handle(SCHEME, forward);
       openWindow();
       const watchCommand = process.env.DESKTOP_WATCH;
       if (!app.isPackaged && watchCommand) watchForChanges(watchCommand);

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ApiError, call, sidecars } from "../api/client";
+import { ApiError, call } from "../api/client";
 import { Log } from "../components/Log";
 import { useEventLog } from "../state/events";
 
@@ -35,7 +35,7 @@ function Home() {
         <a href="https://www.electronjs.org/">Links</a> open in the system browser.
       </p>
       <pre className="info">
-        {`user agent: ${navigator.userAgent}\nwasmGC: ${wasmGc}\nsidecars: ${JSON.stringify(sidecars)}`}
+        {`user agent: ${navigator.userAgent}\nwasmGC: ${wasmGc}`}
       </pre>
       <form
         className="ask"

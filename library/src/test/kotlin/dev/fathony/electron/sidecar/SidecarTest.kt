@@ -24,9 +24,10 @@ class SidecarTest {
     }
 
     @Test
-    fun `api refuses a request without the token or with a wrong one`() = sidecarTest {
+    fun `api refuses a request without the token, with a wrong one, or with it in the query`() = sidecarTest {
         assertEquals(HttpStatusCode.Unauthorized, client.post("/api/echo").status)
         assertEquals(HttpStatusCode.Unauthorized, client.post("/api/echo") { header(HttpHeaders.Authorization, "Bearer wrong") }.status)
+        assertEquals(HttpStatusCode.Unauthorized, client.post("/api/echo?token=$TOKEN").status)
     }
 
     @Test

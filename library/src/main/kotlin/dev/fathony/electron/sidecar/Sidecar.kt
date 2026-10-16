@@ -15,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * What a sidecar sets up in [runSidecar], as plain Ktor routes, each kind under its own prefix: the page at `/page`,
- * the API at `/api`, token-free routes at `/public`. Any other path is a 404.
+ * the API at `/api`, token-free routes at `/public`. Any other path is a 404. The shell adds the token to every request
+ * the window makes, so page code needs none.
  */
 class Sidecar internal constructor(
     private val routing: Routing,
@@ -45,8 +46,8 @@ class Sidecar internal constructor(
     }
 
     /**
-     * Routes under `/public` without the token, for what a page loads by URL and so cannot send it with: an ES module's
-     * imports, a WebAssembly file. Any local program can read them, so serve nothing secret.
+     * Routes under `/public` without the token, for requests from outside the window, such as the system browser. Any
+     * local program can read them, so serve nothing secret.
      */
     fun publicRoutes(routes: Route.() -> Unit) {
         routing.route(PUBLIC, routes)

@@ -1,5 +1,4 @@
-// The page's entry: the API client first (it takes the token out of the address bar), then the router.
-import "./api/client";
+// The page's entry: Monaco's setup and the styles, then the router.
 import "./monaco/setup";
 import "./styles/app.css";
 import { RouterProvider, createRouter } from "@tanstack/react-router";

@@ -65,14 +65,26 @@ fun main() {
 }
 ```
 
-A page that loads files by URL, which cannot carry the token (an ES module's relative imports, a WebAssembly file),
-gets them from `publicRoutes { }`, routes under `/public` without the token. They serve nothing secret; an unguessable
-path keeps one page's files to that page. `Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile
-WebAssembly, and `frames = true` lets the sidecar's own pages show its pages in an iframe.
+The window reaches each sidecar as `sidecar://<name>/…`, and the shell adds the token to every request it forwards,
+so the page's code holds no token: `fetch("/api/reverse")`, `new EventSource("/api/events")`, links, forms, iframes,
+module imports and HTMX all reach `/api` as they are. A page links to another sidecar's pages with a plain
+`<a href="sidecar://other/page/">`, and back the same way.
 
-Each kind of route has its own prefix, so none can shadow another: the page at `/page`, the API at `/api`, public
-routes at `/public`; any other path is a 404. A built page is built for its prefix: its asset URLs start with `/page/`
-(Vite's `base: "/page/"`) and its router's base path is `/page`.
+Each kind of route has its own prefix, so none can shadow another:
+
+| Prefix | What | Token |
+|---|---|---|
+| `/page` | `page("web")`: the page's files, and `index.html` for any other path under it, so a single-page app's routes survive a reload | no |
+| `/api` | `api { }` | yes |
+| `/public` | `publicRoutes { }`: for requests from outside the window, such as a link opened in the system browser | no |
+
+Any other path is a 404. A built page is built for its prefix: its asset URLs start with `/page/` (Vite's
+`base: "/page/"`) and its router's base path is `/page` (wouter's `<Router base="/page">`). Public routes serve nothing
+secret; an unguessable path keeps a URL to whoever was given it.
+
+Every page gets a Content-Security-Policy: scripts from this sidecar's files only, never inline or through `eval`.
+`Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile WebAssembly, `inlineStyles = true` allows `<style>`
+elements and `style` attributes, and `frames = true` lets the sidecar's own pages show its pages in an iframe.
 
 `dataDirectory` is the folder a sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder,
 which Electron names after `appName` (`~/Library/Application Support/<appName>` on macOS, `%APPDATA%\<appName>` on
@@ -173,11 +185,14 @@ logback, which reach every app through the library, and every major wait for rev
 At launch the shell starts every sidecar as its own process on `runtime/bin/java`, writes it the per-launch token as
 the first JSON line on its stdin (not in the environment, which other processes of the same user can read), waits for
 `SIDECAR_READY <port>` on its stdout, tells each sidecar the others' ports with a further line, and opens a window on
-the UI sidecar's `http://127.0.0.1:<port>/page/`.
+the UI sidecar's `sidecar://<ui>/page/`.
 
-The page talks only to the UI sidecar, which calls the others for it. The token and every sidecar's port arrive in
-the page's URL fragment. The page talks to the JVM with `fetch` and `EventSource`, sending the token as
-`Authorization: Bearer` (or `?token=` for event streams), since any local process can reach a loopback port. Sidecars
+The window never talks to a port. The shell registers the `sidecar://` scheme and forwards each request for
+`sidecar://<name>/…` to that sidecar's current port, adding `Authorization: Bearer <token>`; sidecars send each other
+the same header through `peer`. Any local process can reach a loopback port, and the token is how sidecars tell the
+app's requests apart, while page scripts never see it. Each sidecar's origin, `sidecar://<name>`, is the same every
+launch, so the window's storage (localStorage, IndexedDB) persists, and a sidecar restarting on a new port changes
+no URL. The window shows only sidecars' pages: other navigations and redirects open in the system browser. Sidecars
 refuse requests whose `Host` is not their own loopback address, which keeps out a web page that has pointed its domain
 at 127.0.0.1. The page gets a Content-Security-Policy that allows scripts, styles and requests only from its sidecar,
 so scripts and styles live in their own files. Links to `https`, `http` and `mailto` open in the system browser;
