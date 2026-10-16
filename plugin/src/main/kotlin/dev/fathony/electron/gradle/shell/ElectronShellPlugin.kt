@@ -64,6 +64,8 @@ class ElectronShellPlugin : Plugin<Project> {
             jlink.set(jdk.map { it.metadata.installationPath.file(if (isWindows) "bin/jlink.exe" else "bin/jlink").asFile.absolutePath })
             manifests.from(sidecars.map { it.asFileTree.matching { include("*/sidecar.json") } })
             output.set(project.layout.buildDirectory.dir("desktop-runtime"))
+            // A damaged runtime is relinked rather than copied into the app.
+            outputs.upToDateWhen { LinkDesktopRuntime.isComplete(output.get().asFile) }
         }
 
         val manifest = project.tasks.register("desktopManifest", WriteShellManifest::class.java) {
