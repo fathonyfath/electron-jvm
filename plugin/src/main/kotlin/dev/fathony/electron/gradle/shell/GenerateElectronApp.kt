@@ -9,7 +9,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
 /**
- * Writes the Electron app the shell runs: `main.js` and `package.mjs`, which ship with this plugin, and a
+ * Writes the Electron app the shell runs: `main.ts` and `package.mjs`, which ship with this plugin, and a
  * `package.json` pinning Electron and `@electron/packager` to the versions in `electronShell { }`, with the app's name
  * as `productName`, so the app's data folder has that name in development and packaged alike.
  */
@@ -47,7 +47,8 @@ abstract class GenerateElectronApp : DefaultTask() {
             |  "productName": ${json(productName.get())},
             |  "private": true,
             |  "version": "1.0.0",
-            |  "main": "main.js",
+            |  "type": "module",
+            |  "main": "main.ts",
             |  "scripts": {
             |    "start": "electron .",
             |    "package": "node package.mjs"
@@ -62,7 +63,7 @@ abstract class GenerateElectronApp : DefaultTask() {
     }
 
     private companion object {
-        val FILES = listOf("main.js", "package.mjs")
+        val FILES = listOf("main.ts", "package.mjs")
 
         fun json(text: String): String =
             "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\""

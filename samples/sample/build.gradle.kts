@@ -12,8 +12,8 @@ kotlin {
 
 electronSidecar {
     mainClass = "dev.fathony.electron.sample.MainKt"
-    // The React and Monaco app in ./web, built with Vite into the jar's web/ resources.
-    page("web")
+    // The React and Monaco app in ./web, built with Vite into the jar's page/ resources.
+    npmProject("web")
 }
 
 // Vite's build does not type-check, so `check` runs tsc as well.

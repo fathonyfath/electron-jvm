@@ -1,12 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ApiError, call } from "../api/client";
+import { ApiError, call } from "electron-sidecar-client";
 import { CodeEditor } from "../components/CodeEditor";
 import { useEditor } from "../state/editor";
 import { useEventLog } from "../state/events";
 
-export const Route = createFileRoute("/editor")({ component: EditorPage });
-
-function EditorPage() {
+export function EditorPage() {
   const code = useEditor((editor) => editor.code);
   const setCode = useEditor((editor) => editor.setCode);
   const add = useEventLog((log) => log.add);

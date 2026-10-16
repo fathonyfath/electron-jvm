@@ -18,9 +18,9 @@ import org.gradle.jvm.toolchain.JavaToolchainService
  * with `lib/` (the jar and its runtime classpath) and `sidecar.json`, published as the `sidecarDistribution` variant
  * (Usage `electron-sidecar`) that the shell collects. No runtime is included: the shell ships one for all sidecars.
  *
- * `electronSidecar { page("web") }` adds the UI sidecar's page: the npm project in `web/`, installed with `npm ci` from
- * its lock file and built by `buildPage` into the jar's resources under `web/`, so the continuous build of live reload
- * rebuilds it on every change as well. Development builds pass `PAGE_SOURCE_MAPS=true`.
+ * `electronSidecar { npmProject("web") }` installs the npm project in `web/` with `npm ci` and builds it (`buildPage`)
+ * into the jar's `page/` resources, which live reload rebuilds too; development builds pass `PAGE_SOURCE_MAPS=true`.
+ * `pageClient` writes the page's client package first ([WritePageClient]).
  *
  * The plugin declares the repositories a sidecar resolves from, so a consuming build only names the plugins'
  * repository in `pluginManagement`: Maven Central, and `maven.fathony.dev` for `dev.fathony.electron` only, which the
@@ -33,8 +33,8 @@ import org.gradle.jvm.toolchain.JavaToolchainService
 class ElectronSidecarPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         lateinit var sidecar: ElectronSidecarExtension
-        val onPage: (String) -> Unit = { directory -> configurePage(project, sidecar, directory) }
-        sidecar = project.extensions.create("electronSidecar", ElectronSidecarExtension::class.java, onPage)
+        val onNpmProject: (String) -> Unit = { directory -> configureNpmProject(project, sidecar, directory) }
+        sidecar = project.extensions.create("electronSidecar", ElectronSidecarExtension::class.java, onNpmProject)
         sidecar.modules.convention(emptyList())
         sidecar.nodeVersion.convention(DEFAULT_NODE_VERSION)
         sidecar.library.convention(LIBRARY)
@@ -79,8 +79,14 @@ class ElectronSidecarPlugin : Plugin<Project> {
         }
     }
 
-    private fun configurePage(project: Project, sidecar: ElectronSidecarExtension, directory: String) {
+    private fun configureNpmProject(project: Project, sidecar: ElectronSidecarExtension, directory: String) {
         project.useNode(sidecar.nodeVersion, project.provider { project.layout.projectDirectory.dir(directory) }, lockedInstall = true)
+        val pageClient = project.tasks.register("pageClient", WritePageClient::class.java) {
+            description = "Writes the npm package ${WritePageClient.PACKAGE} into $directory/${WritePageClient.FOLDER}."
+            output.set(project.layout.projectDirectory.dir("$directory/${WritePageClient.FOLDER}"))
+        }
+        // A file: dependency, so it must exist before npm installs.
+        project.tasks.named("npmInstall") { dependsOn(pageClient) }
         val output = project.layout.buildDirectory.dir("page")
         // Source maps only in development (a requested `run`, or -Pelectron.development from live reload), so a
         // packaged app carries no page sources.
@@ -93,12 +99,13 @@ class ElectronSidecarPlugin : Plugin<Project> {
             environment.put("PAGE_OUT", output.map { it.asFile.absolutePath })
             environment.put("PAGE_SOURCE_MAPS", development.toString())
             inputs.property("sourceMaps", development)
-            inputs.files(project.fileTree(directory) { exclude("node_modules/**", "dist/**") })
+            inputs.files(project.fileTree(directory) { exclude("node_modules/**", "dist/**", "${WritePageClient.FOLDER}/**") })
+            inputs.files(pageClient)
             outputs.dir(output)
         }
         project.plugins.withId("java") {
             project.tasks.named("processResources", Copy::class.java) {
-                from(buildPage) { into(directory) }
+                from(buildPage) { into(PAGE_RESOURCES) }
             }
         }
     }
@@ -106,6 +113,9 @@ class ElectronSidecarPlugin : Plugin<Project> {
     companion object {
         /** The Usage attribute the shell asks for. */
         const val USAGE = "electron-sidecar"
+
+        /** The library's `page()` serves this folder by default. */
+        const val PAGE_RESOURCES = "page"
 
         /** Where the library is published. */
         const val REPOSITORY = "https://maven.fathony.dev/releases"

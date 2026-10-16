@@ -39,24 +39,24 @@ electronSidecar {
 }
 ```
 
-A sidecar that serves the window also names its page, an npm project in the module, which Gradle builds with
-`npm run build` into the jar's resources:
+A sidecar whose page is built with npm names the npm project's folder; Gradle installs it, builds it with
+`npm run build` and puts the output in the jar's `page/` resources:
 
 ```kotlin
 electronSidecar {
     mainClass = "com.example.MainKt"
-    page("web")
+    npmProject("web")
 }
 ```
 
 Its `main` declares Ktor routes; `runSidecar` starts the server on a free loopback port, requires the token on
-everything under `/api`, turns a handler's exception into a 500 with its message, and does the rest of the contract
-with the shell:
+everything under `/api` and on the pages it renders, turns a handler's exception into a 500 with its message, and does
+the rest of the contract with the shell:
 
 ```kotlin
 fun main() {
     runSidecar {
-        page("web")   // only the sidecar that serves the window: resources/web at /
+        page()   // the npm build (resources/page) at /page
         api {
             post("reverse") { call.respondText(call.receiveText().reversed()) }
             sse("events") { send(ServerSentEvent(data = "hello", event = "greeting")) }
@@ -65,10 +65,61 @@ fun main() {
 }
 ```
 
-A page that loads files by URL, which cannot carry the token (an ES module's relative imports, a WebAssembly file),
-gets them from `publicRoutes { }`, routes outside `/api` without the token. They serve nothing secret; an unguessable
-path keeps one page's files to that page. `Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile
-WebAssembly, and `frames = true` lets the sidecar's own pages show its pages in an iframe.
+The window reaches each sidecar as `sidecar://<name>/…`, and the shell adds the token to every request it forwards,
+so the page's code holds no token: `fetch("/api/reverse")`, `new EventSource("/api/events")`, links, forms, iframes,
+module imports and HTMX all reach `/api` as they are. A page links to another sidecar's pages with a plain
+`<a href="sidecar://other/page/">`, and back the same way.
+
+For an npm page, the plugin also writes `electron-sidecar-client` into the page's folder, as `.sidecar-client`, before
+`npm ci`: the page's side of the library's conventions, versioned with the plugin, so every sidecar's page shares one
+copy. It carries its own `.gitignore`. The page depends on it with the same `file:` dependency wherever its folder
+sits:
+
+```json
+"dependencies": {
+  "electron-sidecar-client": "file:.sidecar-client"
+}
+```
+
+```ts
+import { ApiError, call, listen } from "electron-sidecar-client";
+
+const reversed = await call("reverse", "olleh");   // POST /api/reverse; a failure throws ApiError(status, message)
+const stop = listen("events", "tick", (n) => console.log(n));   // EventSource on /api/events
+```
+
+Run `./gradlew <sidecar>:pageClient` once before the first `npm install` in the page's folder, so the package exists.
+
+The page can be files built by npm, pages the sidecar renders in Kotlin, or both. Rendered pages are routes under
+`/page`, such as Ktor's HTML builder with HTMX, and take the token like the API:
+
+```kotlin
+runSidecar {
+    page {
+        staticResources("assets", "assets")   // htmx.min.js and styles, as files: no inline scripts
+        get("/") { call.respondHtml { /* … */ } }
+        post("todos") { call.respondHtml { /* the fragment HTMX swaps in */ } }
+    }
+    api { /* … */ }
+}
+```
+
+Each kind of route has its own prefix, so none can shadow another:
+
+| Prefix | What | Token |
+|---|---|---|
+| `/page` | `page()`: the page's files, and `index.html` for any other path under it, so a single-page app's routes survive a reload | no |
+| `/page` | `page { }`: pages the sidecar renders; a route wins over a file of the same path | yes |
+| `/api` | `api { }` | yes |
+
+Any other path is a 404. A built page is built for its prefix: its asset URLs start with `/page/` (Vite's
+`base: "/page/"`) and its router's base path is `/page` (wouter's `<Router base="/page">`).
+
+Every page gets a Content-Security-Policy: scripts from this sidecar's files only, never inline or through `eval`.
+`Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile WebAssembly, `inlineStyles = true` allows `<style>`
+elements and `style` attributes, and `frames = true` lets the sidecar's own pages show its pages in an iframe. With
+HTMX, leave out `hx-on` and its event filters, which evaluate code, and turn off its indicator styles
+(`<meta name="htmx-config" content='{"includeIndicatorStyles": false}'>`) or allow inline styles.
 
 `dataDirectory` is the folder a sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder,
 which Electron names after `appName` (`~/Library/Application Support/<appName>` on macOS, `%APPDATA%\<appName>` on
@@ -169,11 +220,14 @@ logback, which reach every app through the library, and every major wait for rev
 At launch the shell starts every sidecar as its own process on `runtime/bin/java`, writes it the per-launch token as
 the first JSON line on its stdin (not in the environment, which other processes of the same user can read), waits for
 `SIDECAR_READY <port>` on its stdout, tells each sidecar the others' ports with a further line, and opens a window on
-the UI sidecar's `http://127.0.0.1:<port>/`.
+the UI sidecar's `sidecar://<ui>/page/`.
 
-The page talks only to the UI sidecar, which calls the others for it. The token and every sidecar's port arrive in
-the page's URL fragment. The page talks to the JVM with `fetch` and `EventSource`, sending the token as
-`Authorization: Bearer` (or `?token=` for event streams), since any local process can reach a loopback port. Sidecars
+The window never talks to a port. The shell registers the `sidecar://` scheme and forwards each request for
+`sidecar://<name>/…` to that sidecar's current port, adding `Authorization: Bearer <token>`; sidecars send each other
+the same header through `peer`. Any local process can reach a loopback port, and the token is how sidecars tell the
+app's requests apart, while page scripts never see it. Each sidecar's origin, `sidecar://<name>`, is the same every
+launch, so the window's storage (localStorage, IndexedDB) persists, and a sidecar restarting on a new port changes
+no URL. The window shows only sidecars' pages: other navigations and redirects open in the system browser. Sidecars
 refuse requests whose `Host` is not their own loopback address, which keeps out a web page that has pointed its domain
 at 127.0.0.1. The page gets a Content-Security-Policy that allows scripts, styles and requests only from its sidecar,
 so scripts and styles live in their own files. Links to `https`, `http` and `mailto` open in the system browser;
@@ -214,11 +268,13 @@ their own.
 
 ### The Electron app
 
-The Electron app's code (`main.js`, `package.mjs`) ships with the shell plugin, under
+The Electron app's code (`main.ts`, `package.mjs`) ships with the shell plugin, under
 `src/main/resources/dev/fathony/electron/gradle/shell/`; edit it there. The plugin writes it, with a `package.json`
 pinning Electron (`electronShell { electronVersion }`) and `@electron/packager`, into `<shell>/build/electron-app`
-(for the sample, `samples/shell/build/electron-app`), where npm runs. To work on it with IntelliJ IDEA's JavaScript
-and Node.js support (IntelliJ IDEA Ultimate):
+(for the sample, `samples/shell/build/electron-app`), where npm runs. `main.ts` ships as it is: Electron's Node strips
+its types, so it uses only syntax that erases. `tsconfig.json` in this folder takes Electron's types from the sample's
+generated app, so the IDE resolves `electron` once `./gradlew :samples:shell:npmInstall` has run. To work on it with
+IntelliJ IDEA's JavaScript and Node.js support (IntelliJ IDEA Ultimate):
 
 - **Node interpreter:** Settings, Languages & Frameworks, Node.js: point it at the Node the build downloaded,
   `~/.gradle/nodejs/node-v<nodejs>-<os>-<arch>/bin/node` (`<nodejs>` from the catalog), so the IDE and Gradle use the
@@ -226,5 +282,5 @@ and Node.js support (IntelliJ IDEA Ultimate):
 - **Debugging the main process:** run `./gradlew :samples:shell:assembleDesktop :samples:shell:npmInstall`, then a
   Node.js run configuration with the interpreter `samples/shell/build/electron-app/node_modules/.bin/electron`, the
   working directory `samples/shell/build/electron-app` and the environment
-  `DESKTOP_DIR=<repo>/samples/shell/build/desktop` stops at breakpoints in the generated `main.js`. The page itself
+  `DESKTOP_DIR=<repo>/samples/shell/build/desktop` stops at breakpoints in the generated `main.ts`. The page itself
   is debugged with Chromium's DevTools (View, Toggle Developer Tools in the app's menu).
