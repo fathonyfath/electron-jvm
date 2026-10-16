@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, Route, Router, Switch, useLocation } from "wouter";
 import { EditorPage } from "./pages/EditorPage";
 import { HomePage } from "./pages/HomePage";
+import { PreviewPage } from "./pages/PreviewPage";
 
 /** The app, under /page/ where the sidecar serves it. State lives in the stores in state/. */
 export function App() {
@@ -11,6 +12,7 @@ export function App() {
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/editor" component={EditorPage} />
+          <Route path="/preview" component={PreviewPage} />
           <Route>Not found</Route>
         </Switch>
       </Layout>
@@ -25,6 +27,7 @@ function Layout({ children }: { children: ReactNode }) {
         <strong>Electron Sidecar Sample</strong>
         <NavLink href="/">Home</NavLink>
         <NavLink href="/editor">Editor</NavLink>
+        <NavLink href="/preview">Preview</NavLink>
       </nav>
       <main className="page">{children}</main>
     </div>

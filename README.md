@@ -8,6 +8,8 @@ API on loopback, and the app ships one Java runtime for all of them. Published a
   `api`, `peer`, on Ktor.
 
 `samples/` is an app built with them: `shell` with the UI sidecar `sample` (a React and Monaco page) and `worker`.
+Its Preview page edits a small HTML page that the sidecar keeps in its data folder (`dataDirectory`), serves from its
+API and shows in an iframe (`contentSecurityPolicy(frames = true)`).
 
 ## Try the Sample
 
@@ -111,12 +113,12 @@ web/
   src/
     main.tsx            entry: renders App
     App.tsx             the layout and navigation, and the routes (under /page)
-    pages/              one component per page: HomePage, EditorPage; they call the sidecar with
+    pages/              one component per page: HomePage, EditorPage, PreviewPage; they call the sidecar with
                         electron-sidecar-client, which the sidecar plugin writes into web/.sidecar-client
     state/              Zustand stores, outside the pages so they survive switching them: the event log, the
-                        editor's text and view states
+                        editor's text and view states, the preview's files
     components/         CodeEditor (Monaco), Log
-    monaco/setup.ts     Monaco from the npm package (no CDN), the slim entry with Kotlin only
+    monaco/setup.ts     Monaco from the npm package (no CDN), the slim entry with Kotlin, HTML and JavaScript
     styles/app.css
 ```
 
