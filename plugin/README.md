@@ -111,11 +111,9 @@ Each kind of route has its own prefix, so none can shadow another:
 | `/page` | `page()`: the page's files, and `index.html` for any other path under it, so a single-page app's routes survive a reload | no |
 | `/page` | `page { }`: pages the sidecar renders; a route wins over a file of the same path | yes |
 | `/api` | `api { }` | yes |
-| `/public` | `publicRoutes { }`: for requests from outside the window, such as a link opened in the system browser | no |
 
 Any other path is a 404. A built page is built for its prefix: its asset URLs start with `/page/` (Vite's
-`base: "/page/"`) and its router's base path is `/page` (wouter's `<Router base="/page">`). Public routes serve nothing
-secret; an unguessable path keeps a URL to whoever was given it.
+`base: "/page/"`) and its router's base path is `/page` (wouter's `<Router base="/page">`).
 
 Every page gets a Content-Security-Policy: scripts from this sidecar's files only, never inline or through `eval`.
 `Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile WebAssembly, `inlineStyles = true` allows `<style>`

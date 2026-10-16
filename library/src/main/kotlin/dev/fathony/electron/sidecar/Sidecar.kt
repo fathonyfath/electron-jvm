@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * What a sidecar sets up in [runSidecar], as Ktor routes under their own prefixes: the page at `/page`, the API at
- * `/api`, token-free routes at `/public`. The shell adds the token to the window's requests.
+ * `/api`. The shell adds the token to the window's requests.
  */
 class Sidecar internal constructor(
     private val routing: Routing,
@@ -59,11 +59,6 @@ class Sidecar internal constructor(
         }
     }
 
-    /** Routes under `/public` without the token, for clients outside the window. Serve nothing secret. */
-    fun publicRoutes(routes: Route.() -> Unit) {
-        routing.route(PUBLIC, routes)
-    }
-
     /** A client for sidecar [name]: requests go to its current port with the token, waiting up to 10 s for it. */
     fun peer(name: String): HttpClient = clients.getOrPut(name) {
         HttpClient(CIO) {
@@ -84,7 +79,6 @@ class Sidecar internal constructor(
         internal const val AUTHENTICATION = "sidecar-token"
         private const val PAGE = "/page"
         private const val API = "/api"
-        private const val PUBLIC = "/public"
 
         /**
          * A policy allowing only this sidecar's files: no inline scripts, no framing. [inlineStyles] (Monaco needs

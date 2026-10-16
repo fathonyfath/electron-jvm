@@ -64,18 +64,13 @@ class SidecarTest {
     }
 
     @Test
-    fun `public routes need no token`() = sidecarTest {
-        assertEquals("open", client.get("/public/open").bodyAsText())
-    }
-
-    @Test
     fun `paths outside the prefixes are not found`() = sidecarTest {
         assertEquals(HttpStatusCode.NotFound, client.get("/todos") { header(HttpHeaders.Authorization, "Bearer $TOKEN") }.status)
     }
 
     @Test
     fun `a request for another host is refused`() = sidecarTest(host = "evil.example") {
-        assertEquals(HttpStatusCode.Forbidden, client.get("/public/open").status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/page/index.html").status)
     }
 
     private fun sidecarTest(host: String = "localhost:80", block: suspend ApplicationTestBuilder.() -> Unit) =
@@ -91,7 +86,6 @@ class SidecarTest {
                         post("todos") { call.respondText("<li>two</li>", ContentType.Text.Html) }
                     }
                     api { post("echo") { call.respondText("echo") } }
-                    publicRoutes { get("open") { call.respondText("open") } }
                 }
             }
             // The test engine's connection is port 80, and the server only answers its own Host.
