@@ -20,7 +20,8 @@ import org.gradle.jvm.toolchain.JavaToolchainService
  *
  * `electronSidecar { page("web") }` adds the UI sidecar's page: the npm project in `web/`, installed with `npm ci` from
  * its lock file and built by `buildPage` into the jar's resources under `web/`, so the continuous build of live reload
- * rebuilds it on every change as well. Development builds pass `PAGE_SOURCE_MAPS=true`.
+ * rebuilds it on every change as well. Development builds pass `PAGE_SOURCE_MAPS=true`. `pageClient` writes the
+ * page's client package first ([WritePageClient]).
  *
  * The plugin declares the repositories a sidecar resolves from, so a consuming build only names the plugins'
  * repository in `pluginManagement`: Maven Central, and `maven.fathony.dev` for `dev.fathony.electron` only, which the
@@ -81,6 +82,12 @@ class ElectronSidecarPlugin : Plugin<Project> {
 
     private fun configurePage(project: Project, sidecar: ElectronSidecarExtension, directory: String) {
         project.useNode(sidecar.nodeVersion, project.provider { project.layout.projectDirectory.dir(directory) }, lockedInstall = true)
+        val pageClient = project.tasks.register("pageClient", WritePageClient::class.java) {
+            description = "Writes the npm package ${WritePageClient.PACKAGE} into $directory/${WritePageClient.FOLDER}."
+            output.set(project.layout.projectDirectory.dir("$directory/${WritePageClient.FOLDER}"))
+        }
+        // A file: dependency, so it must exist before npm installs.
+        project.tasks.named("npmInstall") { dependsOn(pageClient) }
         val output = project.layout.buildDirectory.dir("page")
         // Source maps only in development (a requested `run`, or -Pelectron.development from live reload), so a
         // packaged app carries no page sources.
@@ -93,7 +100,8 @@ class ElectronSidecarPlugin : Plugin<Project> {
             environment.put("PAGE_OUT", output.map { it.asFile.absolutePath })
             environment.put("PAGE_SOURCE_MAPS", development.toString())
             inputs.property("sourceMaps", development)
-            inputs.files(project.fileTree(directory) { exclude("node_modules/**", "dist/**") })
+            inputs.files(project.fileTree(directory) { exclude("node_modules/**", "dist/**", "${WritePageClient.FOLDER}/**") })
+            inputs.files(pageClient)
             outputs.dir(output)
         }
         project.plugins.withId("java") {

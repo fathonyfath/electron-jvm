@@ -70,6 +70,26 @@ so the page's code holds no token: `fetch("/api/reverse")`, `new EventSource("/a
 module imports and HTMX all reach `/api` as they are. A page links to another sidecar's pages with a plain
 `<a href="sidecar://other/page/">`, and back the same way.
 
+For an npm page, the plugin also writes `electron-sidecar-client` into the page's folder, as `.sidecar-client`, before
+`npm ci`: the page's side of the library's conventions, versioned with the plugin, so every sidecar's page shares one
+copy. It carries its own `.gitignore`. The page depends on it with the same `file:` dependency wherever its folder
+sits:
+
+```json
+"dependencies": {
+  "electron-sidecar-client": "file:.sidecar-client"
+}
+```
+
+```ts
+import { ApiError, call, listen } from "electron-sidecar-client";
+
+const reversed = await call("reverse", "olleh");   // POST /api/reverse; a failure throws ApiError(status, message)
+const stop = listen("events", "tick", (n) => console.log(n));   // EventSource on /api/events
+```
+
+Run `./gradlew <sidecar>:pageClient` once before the first `npm install` in the page's folder, so the package exists.
+
 The page can be files built by npm, pages the sidecar renders in Kotlin, or both. Rendered pages are routes under
 `/page`, such as Ktor's HTML builder with HTMX, and take the token like the API:
 
