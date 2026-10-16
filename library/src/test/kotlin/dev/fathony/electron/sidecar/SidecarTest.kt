@@ -5,6 +5,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
@@ -31,6 +32,32 @@ class SidecarTest {
     }
 
     @Test
+    fun `a rendered page takes the token, with the page's policy`() = sidecarTest {
+        val response = client.get("/page/todos") { header(HttpHeaders.Authorization, "Bearer $TOKEN") }
+        assertEquals("<ul><li>one</li></ul>", response.bodyAsText())
+        assertEquals(Sidecar.contentSecurityPolicy(), response.headers["Content-Security-Policy"])
+    }
+
+    @Test
+    fun `the shell's entry point reaches a rendered page's root`() = sidecarTest {
+        assertEquals("<h1>home</h1>", client.get("/page/") { header(HttpHeaders.Authorization, "Bearer $TOKEN") }.bodyAsText())
+    }
+
+    @Test
+    fun `an HTMX request to a rendered page takes the token as well`() = sidecarTest {
+        val response = client.post("/page/todos") {
+            header(HttpHeaders.Authorization, "Bearer $TOKEN")
+            header("HX-Request", "true")
+        }
+        assertEquals("<li>two</li>", response.bodyAsText())
+    }
+
+    @Test
+    fun `a rendered page refuses a request without the token`() = sidecarTest {
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/page/todos").status)
+    }
+
+    @Test
     fun `public routes need no token`() = sidecarTest {
         assertEquals("open", client.get("/public/open").bodyAsText())
     }
@@ -51,6 +78,11 @@ class SidecarTest {
             val message = """{"type": "token", "token": "$TOKEN", "data": "$dataDirectory"}"""
             application {
                 sidecar(SidecarToken.fromMessage(message), Peers(), dataDirectory) {
+                    page {
+                        get("/") { call.respondText("<h1>home</h1>", ContentType.Text.Html) }
+                        get("todos") { call.respondText("<ul><li>one</li></ul>", ContentType.Text.Html) }
+                        post("todos") { call.respondText("<li>two</li>", ContentType.Text.Html) }
+                    }
                     api { post("echo") { call.respondText("echo") } }
                     publicRoutes { get("open") { call.respondText("open") } }
                 }

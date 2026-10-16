@@ -5,6 +5,8 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLProtocol
+import io.ktor.server.application.createRouteScopedPlugin
+import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.http.content.staticResources
 import io.ktor.server.routing.Route
@@ -35,6 +37,20 @@ class Sidecar internal constructor(
         routing.staticResources(PAGE, resources) {
             default("index.html")
             modify { _, call -> call.response.headers.append("Content-Security-Policy", contentSecurityPolicy) }
+        }
+    }
+
+    /**
+     * Pages this sidecar renders, under `/page`, such as Ktor's HTML builder with HTMX. They require the token, which
+     * the shell adds to navigations, forms and HTMX requests alike. The policy allows no inline scripts or `eval`, so
+     * with HTMX skip `hx-on` and turn off `includeIndicatorStyles`. Call it once.
+     */
+    fun page(contentSecurityPolicy: String = contentSecurityPolicy(), routes: Route.() -> Unit) {
+        routing.authenticate(AUTHENTICATION) {
+            route(PAGE) {
+                install(PagePolicy) { policy = contentSecurityPolicy }
+                routes()
+            }
         }
     }
 
@@ -94,3 +110,12 @@ class Sidecar internal constructor(
     }
 }
 
+private class PagePolicyConfig {
+    var policy: String = Sidecar.contentSecurityPolicy()
+}
+
+/** Adds the Content-Security-Policy to every response of its routes. */
+private val PagePolicy = createRouteScopedPlugin("PagePolicy", ::PagePolicyConfig) {
+    val policy = pluginConfig.policy
+    onCall { call -> call.response.headers.append("Content-Security-Policy", policy) }
+}

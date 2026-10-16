@@ -1,6 +1,6 @@
 // The library a sidecar is written with, added to sidecars by the sidecar plugin as
-// dev.fathony.electron:electron-sidecar: runSidecar starts a Ktor server on a loopback port with the shell's token
-// checked on everything under /api, gives clients for the other sidecars (peer), and does the rest of the shell's
+// dev.fathony.electron:electron-sidecar: runSidecar starts a Ktor server on a loopback port that checks the shell's
+// token on its API and rendered pages, gives clients for the other sidecars (peer), and does the rest of the shell's
 // contract.
 plugins {
     alias(libs.plugins.kotlin.jvm)

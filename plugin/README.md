@@ -50,8 +50,8 @@ electronSidecar {
 ```
 
 Its `main` declares Ktor routes; `runSidecar` starts the server on a free loopback port, requires the token on
-everything under `/api`, turns a handler's exception into a 500 with its message, and does the rest of the contract
-with the shell:
+everything under `/api` and on the pages it renders, turns a handler's exception into a 500 with its message, and does
+the rest of the contract with the shell:
 
 ```kotlin
 fun main() {
@@ -70,11 +70,26 @@ so the page's code holds no token: `fetch("/api/reverse")`, `new EventSource("/a
 module imports and HTMX all reach `/api` as they are. A page links to another sidecar's pages with a plain
 `<a href="sidecar://other/page/">`, and back the same way.
 
+The page can be files built by npm, pages the sidecar renders in Kotlin, or both. Rendered pages are routes under
+`/page`, such as Ktor's HTML builder with HTMX, and take the token like the API:
+
+```kotlin
+runSidecar {
+    page {
+        staticResources("assets", "assets")   // htmx.min.js and styles, as files: no inline scripts
+        get("/") { call.respondHtml { /* … */ } }
+        post("todos") { call.respondHtml { /* the fragment HTMX swaps in */ } }
+    }
+    api { /* … */ }
+}
+```
+
 Each kind of route has its own prefix, so none can shadow another:
 
 | Prefix | What | Token |
 |---|---|---|
 | `/page` | `page("web")`: the page's files, and `index.html` for any other path under it, so a single-page app's routes survive a reload | no |
+| `/page` | `page { }`: pages the sidecar renders; a route wins over a file of the same path | yes |
 | `/api` | `api { }` | yes |
 | `/public` | `publicRoutes { }`: for requests from outside the window, such as a link opened in the system browser | no |
 
@@ -84,7 +99,9 @@ secret; an unguessable path keeps a URL to whoever was given it.
 
 Every page gets a Content-Security-Policy: scripts from this sidecar's files only, never inline or through `eval`.
 `Sidecar.contentSecurityPolicy(wasm = true)` lets a page compile WebAssembly, `inlineStyles = true` allows `<style>`
-elements and `style` attributes, and `frames = true` lets the sidecar's own pages show its pages in an iframe.
+elements and `style` attributes, and `frames = true` lets the sidecar's own pages show its pages in an iframe. With
+HTMX, leave out `hx-on` and its event filters, which evaluate code, and turn off its indicator styles
+(`<meta name="htmx-config" content='{"includeIndicatorStyles": false}'>`) or allow inline styles.
 
 `dataDirectory` is the folder a sidecar keeps its files in across launches: `sidecars/<name>` in the app's data folder,
 which Electron names after `appName` (`~/Library/Application Support/<appName>` on macOS, `%APPDATA%\<appName>` on
