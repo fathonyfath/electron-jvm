@@ -392,7 +392,8 @@ function watchForChanges(watchCommand: string): void {
   const pending = new Map<string, NodeJS.Timeout>();
   fs.watch(sidecarsDir, { recursive: true }, (_event, file) => {
     const name = file?.split(path.sep)[0];
-    if (!name || !sidecars.has(name)) return;
+    // Every sidecar, running or not: one whose restart failed is down, and the next change is what brings it back.
+    if (!name || !names.includes(name)) return;
     clearTimeout(pending.get(name));
     pending.set(name, setTimeout(() => void restart(name), 500));
   });
