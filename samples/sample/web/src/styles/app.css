@@ -2,6 +2,14 @@ html, body, #root { height: 100%; margin: 0; }
 body { font: 14px system-ui, sans-serif; color: #222; background: #fff; }
 .app { display: flex; flex-direction: column; height: 100%; }
 .nav { display: flex; gap: 16px; align-items: center; padding: 10px 24px; border-bottom: 1px solid #e5e5e5; }
+/* The navigation as the window's title bar (electronShell { titleBar = "integrated" }): dragged to move the window, its
+   links and buttons still clicked, and clear of the window buttons, which are over its right end on Windows and Linux
+   (where the title bar area ends) and its left on macOS. */
+.nav.title-bar { -webkit-app-region: drag; box-sizing: border-box; height: 44px; padding-top: 0; padding-bottom: 0; padding-right: calc(24px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); }
+.nav.title-bar.mac { padding-left: 84px; }
+.nav.title-bar a, .nav.title-bar button { -webkit-app-region: no-drag; }
+.menu-button { border: 0; background: none; font-size: 16px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.menu-button:hover { background: #eee; }
 .nav a { color: #555; text-decoration: none; }
 .nav a[aria-current="page"] { color: #000; font-weight: 600; }
 .page { flex: 1; min-height: 0; padding: 24px; box-sizing: border-box; overflow: auto; }

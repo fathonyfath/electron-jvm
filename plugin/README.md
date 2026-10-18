@@ -82,10 +82,11 @@ sits:
 ```
 
 ```ts
-import { ApiError, call, listen } from "electron-sidecar-client";
+import { ApiError, call, electronShell, listen } from "electron-sidecar-client";
 
 const reversed = await call("reverse", "olleh");   // POST /api/reverse; a failure throws ApiError(status, message)
 const stop = listen("events", "tick", (n) => console.log(n));   // EventSource on /api/events
+const shell = electronShell();   // the window's menu and title bar, or null outside the app (see Title bar and menu)
 ```
 
 Run `./gradlew <sidecar>:pageClient` once before the first `npm install` in the page's folder, so the package exists.
@@ -153,6 +154,7 @@ plugins {
 electronShell {
     appName = "My App"
     uiSidecar = "app"
+    // titleBar is "native" or "integrated" (see Title bar and menu)
     // javaVersion, nodeVersion, electronVersion and packagerVersion have defaults (see Versions)
 }
 
@@ -169,8 +171,64 @@ as `Resources/desktop`:
 desktop/
   runtime/              the shared Java runtime
   sidecars/<name>/      lib/ (the sidecar's jars) and sidecar.json (name, main class, modules)
-  shell.json            which sidecar serves the UI
+  shell.json            which sidecar serves the UI, and the title bar's mode
 ```
+
+### Title bar and menu
+
+By default (`titleBar = "native"`) the window has the system's title bar and menu bar, and the menu is Electron's
+default (File, Edit, View, Window) until the page sets its own. With `titleBar = "integrated"` the page draws the title
+bar, as editors do, and the window has no other row above it:
+
+- **macOS:** the window buttons sit over the page's top left (`titleBarStyle: hiddenInset`), and the menu is the
+  screen's menu bar, as on every Mac app.
+- **Windows and Linux:** Electron draws the window buttons over the page's top right (its window controls overlay),
+  in colors the page sets, and hides the menu bar. Its shortcuts still work; the page opens the menu itself, from a
+  button in its title bar, as a native drop-down (`popUpMenu`). A Linux desktop with a global menu bar, such as KDE's,
+  may show the menu there as well.
+
+The page then makes its title bar draggable with CSS, and leaves room for the window buttons: on Windows and Linux
+Chromium tells it where they are not, as `env(titlebar-area-x)`, `env(titlebar-area-width)` and
+`env(titlebar-area-height)`; on macOS they take about the first 80 pixels.
+
+```css
+.title-bar { -webkit-app-region: drag; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); }
+.title-bar button { -webkit-app-region: no-drag; }
+```
+
+**The menu belongs to the page the window shows,** whichever sidecar serves it: the page sets it, the shell builds it
+into a native menu, and clicks come back to the page. When the window navigates or reloads, the menu goes with the
+page and the window has the default one until the new page sets its own, so a menu never sends clicks to a page that
+is gone. Each window keeps its own page's menu: Windows and Linux have a menu per window, and macOS's menu bar shows the
+focused window's. Only the page in the window's main frame reaches the shell, never a frame inside it, and the shell
+checks every item: an `id` the page hears about, or a `role` Electron carries out (`undo`, `copy`, `paste`,
+`toggleDevTools`, `quit`, `editMenu`…), with a `label`, an `accelerator`, `checked`, `enabled` and a `submenu`. On macOS
+the app's own menu comes first, added when the page leaves it out.
+
+```ts
+import { electronShell } from "electron-sidecar-client";
+
+const shell = electronShell();   // null outside the app's window, such as in a browser
+if (shell) {
+  await shell.setMenu([
+    { label: "File", submenu: [{ id: "open", label: "Open…", accelerator: "CmdOrCtrl+O" }, { type: "separator" }, { role: "quit" }] },
+    { role: "editMenu" },
+    { label: "View", submenu: [{ id: "sidebar", label: "Sidebar", type: "checkbox", checked: true }, { role: "toggleDevTools" }] },
+  ]);
+  shell.onMenuClick((id) => console.log(`clicked ${id}`));
+  menuButton.onclick = () => shell.popUpMenu(menuButton.offsetLeft, menuButton.offsetTop + menuButton.offsetHeight);
+  await shell.setTitleBarColors({ color: "#ffffff", symbolColor: "#1b1f24", height: 44 });   // Windows and Linux only
+  await shell.setTheme("dark");   // or "light", or "system"
+}
+```
+
+The page sets the menu again whenever what it shows changes (a checked item, a disabled one); it is cheap.
+
+A page with its own light and dark setting tells the shell with `setTheme`, so the app's native parts match it: on
+macOS the menus, context menus and window buttons; on Windows the window frames and menus; and on every platform
+Electron's own dialogs and every page's `prefers-color-scheme`, which `system` leaves to the system. The theme is the
+app's, not the page's: it stays when the page navigates, until a page sets another. On Linux the menus, the desktop's
+window decorations and its global menu bar follow the desktop's theme, as every app's there do.
 
 ### Versions
 
@@ -268,11 +326,12 @@ their own.
 
 ### The Electron app
 
-The Electron app's code (`main.ts`, `package.mjs`) ships with the shell plugin, under
+The Electron app's code (`main.ts`, `preload.cjs`, `package.mjs`) ships with the shell plugin, under
 `src/main/resources/dev/fathony/electron/gradle/shell/`; edit it there. The plugin writes it, with a `package.json`
 pinning Electron (`electronShell { electronVersion }`) and `@electron/packager`, into `<shell>/build/electron-app`
 (for the sample, `samples/shell/build/electron-app`), where npm runs. `main.ts` ships as it is: Electron's Node strips
-its types, so it uses only syntax that erases. `tsconfig.json` in this folder takes Electron's types from the sample's
+its types, so it uses only syntax that erases. `preload.cjs`, the page's way to the shell (`window.electronShell`),
+is plain CommonJS, since a sandboxed preload can be neither an ES module nor TypeScript. `tsconfig.json` in this folder takes Electron's types from the sample's
 generated app, so the IDE resolves `electron` once `./gradlew :samples:shell:npmInstall` has run. To work on it with
 IntelliJ IDEA's JavaScript and Node.js support (IntelliJ IDEA Ultimate):
 

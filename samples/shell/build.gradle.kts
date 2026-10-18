@@ -8,6 +8,8 @@ plugins {
 electronShell {
     appName = "Electron Sidecar Sample"
     uiSidecar = "sample"
+    // The page draws the title bar, its navigation, and sets the menu (see sample/web/src/App.tsx).
+    titleBar = "integrated"
 }
 
 dependencies {

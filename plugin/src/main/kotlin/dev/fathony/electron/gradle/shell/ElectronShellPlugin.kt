@@ -32,6 +32,7 @@ class ElectronShellPlugin : Plugin<Project> {
         project.plugins.apply("jvm-toolchains")
 
         val shell = project.extensions.create("electronShell", ElectronShellExtension::class.java)
+        shell.titleBar.convention("native")
         shell.javaVersion.convention(21)
         shell.nodeVersion.convention(DEFAULT_NODE_VERSION)
         shell.electronVersion.convention(ElectronVersions.ELECTRON_APP)
@@ -71,6 +72,7 @@ class ElectronShellPlugin : Plugin<Project> {
 
         val manifest = project.tasks.register("desktopManifest", WriteShellManifest::class.java) {
             uiSidecar.set(shell.uiSidecar)
+            titleBar.set(shell.titleBar)
             sidecarManifests.from(sidecars.map { it.asFileTree.matching { include("*/sidecar.json") } })
             output.set(project.layout.buildDirectory.file("desktop-manifest/shell.json"))
         }
