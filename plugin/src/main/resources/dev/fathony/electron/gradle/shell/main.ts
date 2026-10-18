@@ -3,7 +3,7 @@
 // integrated title bar the page draws the title bar, and sets the app's menu and the window buttons' colors through
 // preload.cjs's bridge.
 // Electron runs this file as it is (Node strips the types), so it uses only erasable syntax.
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, protocol, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, nativeTheme, protocol, shell } from "electron";
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -221,12 +221,19 @@ function openWindow(): void {
   window = opened;
 }
 
+// What shows under the cursor while files are dragged out: a plain page, 32 pixels. macOS needs an image there.
+let dragIconImage: Electron.NativeImage | undefined;
+function dragIcon(): Electron.NativeImage {
+  dragIconImage ??= nativeImage.createFromDataURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAZ0lEQVR42mNgGAWDFTS1T/xPKqa6A379/kM0projyHHAnftPqOcIch1ANUdQ4gCqOIJSB1DsCHITIdVyB6kOIOS4oe+AnfuOkYSHXwiMOmA0DYw6YDQNjDpgNA2MTAdQE4929QYtAADp9fFj86BbNAAAAABJRU5ErkJggg==");
+  return dragIconImage;
+}
+
 // The window buttons' overlay height until the page sets its own, in CSS pixels.
 const TITLE_BAR_HEIGHT = 40;
 
 // What the window's page may ask of the shell (preload.cjs): the page the window shows, whichever sidecar serves it, in
 // its main frame, never a frame inside it.
-function fromPage(event: Electron.IpcMainInvokeEvent): boolean {
+function fromPage(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent): boolean {
   return (
     window !== null &&
     event.sender === window.webContents &&
@@ -359,6 +366,16 @@ function handlePageRequests(): void {
 
   // The app's theme: its native parts (frames, menus, dialogs) and the pages' prefers-color-scheme. It stays until a
   // page sets another, so a page that does not care keeps the last one.
+  // Files dragged out of the page to the desktop or another app, as the files themselves. A message rather than a
+  // request, since the drag has to start while the mouse is still down.
+  ipcMain.on("electron-shell:start-drag", (event, paths: unknown) => {
+    if (!fromPage(event)) return;
+    if (!Array.isArray(paths) || paths.length === 0 || paths.length > 100) return;
+    const files = paths.filter((p): p is string => typeof p === "string" && path.isAbsolute(p) && fs.existsSync(p));
+    if (files.length !== paths.length) return;
+    event.sender.startDrag({ file: files[0], files, icon: dragIcon() });
+  });
+
   ipcMain.handle("electron-shell:set-theme", (event, theme: unknown) => {
     if (!fromPage(event)) throw new Error("only the window's page sets the theme");
     if (theme !== "system" && theme !== "light" && theme !== "dark") throw new Error("the theme is system, light or dark");

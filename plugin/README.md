@@ -230,6 +230,29 @@ Electron's own dialogs and every page's `prefers-color-scheme`, which `system` l
 app's, not the page's: it stays when the page navigates, until a page sets another. On Linux the menus, the desktop's
 window decorations and its global menu bar follow the desktop's theme, as every app's there do.
 
+### Files dragged in and out
+
+A file dropped on the page arrives as the web's `File`, its contents, which a page can send to its sidecar as it is;
+since Electron 32 it carries no path. When the sidecar needs the file where it is (a folder to open in place, say),
+`pathForFile` gives its absolute path; it is null for a file that is not on disk. Dragging out works the other way:
+in a `dragstart` handler the page calls `startDrag` with absolute paths, and the files themselves go to the desktop or
+another app, a plain page icon under the cursor. A drop that the page does not take does nothing: Chromium would open
+the file as a page, and the window shows only sidecars' pages.
+
+```ts
+const shell = electronShell();
+zone.addEventListener("dragover", (event) => event.preventDefault());
+zone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  for (const file of event.dataTransfer?.files ?? []) console.log(shell?.pathForFile(file) ?? file.name);
+});
+row.draggable = true;
+row.addEventListener("dragstart", (event) => {
+  event.preventDefault();
+  shell?.startDrag("/path/to/the/file.png");
+});
+```
+
 ### Versions
 
 The defaults are the versions a plugin release was tested with: Java 21, and Node.js, Electron and
