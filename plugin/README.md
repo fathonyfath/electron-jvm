@@ -362,7 +362,8 @@ IntelliJ IDEA's JavaScript and Node.js support (IntelliJ IDEA Ultimate):
   `~/.gradle/electron-jvm/node/<nodejs>/node-v<nodejs>-<os>-<arch>/bin/node` (`<nodejs>` from the catalog), so the IDE
   and Gradle use the same one. Each Node version has its own folder: node-gradle empties its folder of every Node before
   it unpacks one, so a folder shared with another Node download, such as Kotlin/Wasm's `~/.gradle/nodejs`, would have
-  each setup delete the other's.
+  each setup delete the other's. For the same reason, when several projects of a build use the same Node, such as a
+  shell and a sidecar, only one of them unpacks it and the others wait for it.
 - **Debugging the main process:** run `./gradlew :samples:shell:assembleDesktop :samples:shell:npmInstall`, then a
   Node.js run configuration with the interpreter `samples/shell/build/electron-app/node_modules/.bin/electron`, the
   working directory `samples/shell/build/electron-app` and the environment
