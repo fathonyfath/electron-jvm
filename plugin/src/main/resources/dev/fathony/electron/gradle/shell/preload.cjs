@@ -1,7 +1,7 @@
 // The window's page's way to the shell, as `window.electronShell` (see the sidecar page client's types): the platform,
-// the title bar's mode, the app's menu and theme, and the window buttons' colors. It runs in the page's main frame only, isolated
+// the title bar's mode, the app's menu and theme, the window buttons' colors, and files dragged in and out. It runs in the page's main frame only, isolated
 // from the page and sandboxed, so it is CommonJS and uses only what a sandboxed preload has.
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 const titleBar = process.argv.find((arg) => arg.startsWith("--electron-shell-title-bar="))?.split("=")[1] ?? "native";
 
@@ -17,4 +17,12 @@ contextBridge.exposeInMainWorld("electronShell", {
   },
   setTitleBarColors: (colors) => ipcRenderer.invoke("electron-shell:title-bar-colors", colors),
   setTheme: (theme) => ipcRenderer.invoke("electron-shell:set-theme", theme),
+  pathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file) || null;
+    } catch {
+      return null;
+    }
+  },
+  startDrag: (paths) => ipcRenderer.send("electron-shell:start-drag", Array.isArray(paths) ? paths : [paths]),
 });

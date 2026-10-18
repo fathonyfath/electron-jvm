@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { electronShell } from "electron-sidecar-client";
 import { Link, Route, Router, Switch, useLocation } from "wouter";
 import { EditorPage } from "./pages/EditorPage";
+import { FilesPage } from "./pages/FilesPage";
 import { HomePage } from "./pages/HomePage";
 import { PreviewPage } from "./pages/PreviewPage";
 
@@ -13,6 +14,7 @@ export function App() {
           <Route path="/" component={HomePage} />
           <Route path="/editor" component={EditorPage} />
           <Route path="/preview" component={PreviewPage} />
+          <Route path="/files" component={FilesPage} />
           <Route>Not found</Route>
         </Switch>
       </Layout>
@@ -26,6 +28,7 @@ const PAGES = [
   { id: "/", label: "Home", accelerator: "CmdOrCtrl+1" },
   { id: "/editor", label: "Editor", accelerator: "CmdOrCtrl+2" },
   { id: "/preview", label: "Preview", accelerator: "CmdOrCtrl+3" },
+  { id: "/files", label: "Files", accelerator: "CmdOrCtrl+4" },
 ];
 
 // The app's theme, for its native parts and the page's prefers-color-scheme.
@@ -91,6 +94,7 @@ function Layout({ children }: { children: ReactNode }) {
         <NavLink href="/">Home</NavLink>
         <NavLink href="/editor">Editor</NavLink>
         <NavLink href="/preview">Preview</NavLink>
+        <NavLink href="/files">Files</NavLink>
         <a href="sidecar://htmx/page/">Server pages</a>
       </nav>
       <main className="page">{children}</main>

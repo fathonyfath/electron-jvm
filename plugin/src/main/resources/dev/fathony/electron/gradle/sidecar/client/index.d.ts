@@ -47,6 +47,16 @@ export interface ElectronShell {
    * the system's, or light or dark whatever the system's is. It stays until a page sets another.
    */
   setTheme(theme: "system" | "light" | "dark"): Promise<void>;
+  /**
+   * Where a [file] dropped on the page, or picked in a file input, is on disk: its absolute path, or null for a file
+   * that is not on disk (made by the page, or dragged from a browser). A dropped folder is a File too, and has its path.
+   */
+  pathForFile(file: File): string | null;
+  /**
+   * Drags the files at [paths], absolute paths, out of the window as the files themselves, to the desktop or another
+   * app. Call it from a `dragstart` handler, after `event.preventDefault()`. Paths that do not exist cancel the drag.
+   */
+  startDrag(paths: string | string[]): void;
 }
 
 /** The shell, or null when the page is not in its window, such as in a browser. */
