@@ -14,13 +14,17 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
 /**
- * Writes `shell.json`, which tells `main.ts` which sidecar serves the window: `{"ui"}`. Fails the build when
- * [uiSidecar] names none of the sidecars, which would otherwise only show as the app quitting at launch.
+ * Writes `shell.json`, which tells `main.ts` which sidecar serves the window and how its title bar looks:
+ * `{"ui", "titleBar"}`. Fails the build when [uiSidecar] names none of the sidecars, which would otherwise only show as
+ * the app quitting at launch, or [titleBar] is neither `native` nor `integrated`.
  */
 @DisableCachingByDefault(because = "Writes one small file; faster than a cache lookup")
 abstract class WriteShellManifest : DefaultTask() {
     @get:Input
     abstract val uiSidecar: Property<String>
+
+    @get:Input
+    abstract val titleBar: Property<String>
 
     /** The `sidecar.json` of every sidecar the shell carries. */
     @get:InputFiles
@@ -38,10 +42,15 @@ abstract class WriteShellManifest : DefaultTask() {
             val known = if (names.isEmpty()) "the shell has no sidecars; add one with sidecar(...)" else "its sidecars are ${names.joinToString()}"
             throw GradleException("electronShell { uiSidecar = \"$ui\" } names no sidecar of this shell: $known")
         }
-        output.get().asFile.writeText("{\"ui\": \"$ui\"}\n")
+        val titleBar = titleBar.get()
+        if (titleBar !in TITLE_BARS) {
+            throw GradleException("electronShell { titleBar = \"$titleBar\" } is none of ${TITLE_BARS.joinToString { "\"$it\"" }}")
+        }
+        output.get().asFile.writeText("{\"ui\": \"$ui\", \"titleBar\": \"$titleBar\"}\n")
     }
 
     private companion object {
         val NAME = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"")
+        val TITLE_BARS = listOf("native", "integrated")
     }
 }
