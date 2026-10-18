@@ -20,7 +20,7 @@ jobs:
       - name: Cache Node.js download
         uses: actions/cache@v6
         with:
-          path: ~/.gradle/nodejs
+          path: ~/.gradle/electron-jvm/node
           key: node-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Cache Electron download
         uses: actions/cache@v6
