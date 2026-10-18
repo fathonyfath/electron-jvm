@@ -74,6 +74,8 @@ private fun HTML.notesPage(notes: List<Note>) {
         title("Server pages")
         link(rel = "stylesheet", href = "assets/style.css")
         script(src = "htmx.min.js") {}
+        // The navigation as the window's title bar, and this page's menu.
+        script(src = "assets/title-bar.js") { defer = true }
     }
     body {
         nav("nav") {
