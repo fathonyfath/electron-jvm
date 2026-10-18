@@ -24,6 +24,10 @@ cd electron-jvm
 ./gradlew :samples:shell:package   # this platform's app under samples/shell/build/package
 ```
 
+Its pages show the parts one by one: Home calls the sidecar and a peer and listens to its events, Editor and Preview
+edit files the sidecar keeps, Files takes dropped files and drags files out of the window, and Server pages are
+rendered in Kotlin. The title bar is the page's, with a menu it sets.
+
 ## Installation
 
 The plugins and the library are published to [maven.fathony.dev](https://maven.fathony.dev). Name it for the
@@ -84,7 +88,7 @@ The [plugin README](plugin/README.md) covers the options, the library's API and 
 ```
 plugin/                     The Gradle plugins, an included build, so the samples build against their source
 ├── src/main/kotlin/        dev.fathony.electron.shell and dev.fathony.electron.sidecar
-└── src/main/resources/     The Electron app (main.ts, package.mjs) the shell plugin generates
+└── src/main/resources/     The Electron app (main.ts, preload.cjs, package.mjs) the shell plugin generates
 library/                    dev.fathony.electron:electron-sidecar, an included build substituted for the published one
 samples/
 ├── shell/                  The sample app: names its sidecars, nothing else
