@@ -336,8 +336,10 @@ generated app, so the IDE resolves `electron` once `./gradlew :samples:shell:npm
 IntelliJ IDEA's JavaScript and Node.js support (IntelliJ IDEA Ultimate):
 
 - **Node interpreter:** Settings, Languages & Frameworks, Node.js: point it at the Node the build downloaded,
-  `~/.gradle/nodejs/node-v<nodejs>-<os>-<arch>/bin/node` (`<nodejs>` from the catalog), so the IDE and Gradle use the
-  same one.
+  `~/.gradle/electron-jvm/node/<nodejs>/node-v<nodejs>-<os>-<arch>/bin/node` (`<nodejs>` from the catalog), so the IDE
+  and Gradle use the same one. Each Node version has its own folder: node-gradle empties its folder of every Node before
+  it unpacks one, so a folder shared with another Node download, such as Kotlin/Wasm's `~/.gradle/nodejs`, would have
+  each setup delete the other's.
 - **Debugging the main process:** run `./gradlew :samples:shell:assembleDesktop :samples:shell:npmInstall`, then a
   Node.js run configuration with the interpreter `samples/shell/build/electron-app/node_modules/.bin/electron`, the
   working directory `samples/shell/build/electron-app` and the environment

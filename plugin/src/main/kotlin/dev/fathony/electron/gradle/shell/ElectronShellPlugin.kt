@@ -24,7 +24,7 @@ import org.gradle.jvm.toolchain.JvmVendorSpec
  * modules; a JetBrains SDK cannot be linked from, its patched jmods fail java.base's recorded hashes),
  * `sidecars/<name>/` and `shell.json`. `run` starts Electron in development with that folder as `DESKTOP_DIR`, and
  * `package` builds this platform's app with it as `Resources/desktop`. Node comes from the node-gradle plugin,
- * downloaded into `~/.gradle/nodejs`; the repository declares Node.js's download site in its settings.
+ * downloaded into `~/.gradle/electron-jvm/node/<version>`; the repository declares Node.js's download site in its settings.
  */
 class ElectronShellPlugin : Plugin<Project> {
     override fun apply(project: Project) {
