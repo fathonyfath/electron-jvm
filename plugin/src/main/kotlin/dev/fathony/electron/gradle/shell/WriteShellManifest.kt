@@ -14,9 +14,11 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
 /**
- * Writes `shell.json`, which tells `main.ts` which sidecar serves the window and how its title bar looks:
- * `{"ui", "titleBar"}`. Fails the build when [uiSidecar] names none of the sidecars, which would otherwise only show as
- * the app quitting at launch, or [titleBar] is neither `native` nor `integrated`.
+ * Writes `shell.json`, which tells `main.ts` which sidecar serves the window, how its title bar looks and how large the
+ * window is: `{"ui", "titleBar", "window": {"width", "height", "minWidth", "minHeight"}}`. Fails the build when
+ * [uiSidecar] names none of the sidecars, which would otherwise only show as the app quitting at launch, when
+ * [titleBar] is neither `native` nor `integrated`, or when a size is not positive or the window opens smaller than its
+ * minimum.
  */
 @DisableCachingByDefault(because = "Writes one small file; faster than a cache lookup")
 abstract class WriteShellManifest : DefaultTask() {
@@ -25,6 +27,18 @@ abstract class WriteShellManifest : DefaultTask() {
 
     @get:Input
     abstract val titleBar: Property<String>
+
+    @get:Input
+    abstract val windowWidth: Property<Int>
+
+    @get:Input
+    abstract val windowHeight: Property<Int>
+
+    @get:Input
+    abstract val minWindowWidth: Property<Int>
+
+    @get:Input
+    abstract val minWindowHeight: Property<Int>
 
     /** The `sidecar.json` of every sidecar the shell carries. */
     @get:InputFiles
@@ -46,7 +60,18 @@ abstract class WriteShellManifest : DefaultTask() {
         if (titleBar !in TITLE_BARS) {
             throw GradleException("electronShell { titleBar = \"$titleBar\" } is none of ${TITLE_BARS.joinToString { "\"$it\"" }}")
         }
-        output.get().asFile.writeText("{\"ui\": \"$ui\", \"titleBar\": \"$titleBar\"}\n")
+        val width = windowWidth.get()
+        val height = windowHeight.get()
+        val minWidth = minWindowWidth.get()
+        val minHeight = minWindowHeight.get()
+        if (listOf(width, height, minWidth, minHeight).any { it <= 0 }) {
+            throw GradleException("electronShell's window sizes must be positive: windowWidth = $width, windowHeight = $height, minWindowWidth = $minWidth, minWindowHeight = $minHeight")
+        }
+        if (width < minWidth || height < minHeight) {
+            throw GradleException("electronShell's window opens at $width × $height, smaller than its minimum, $minWidth × $minHeight")
+        }
+        val window = "{\"width\": $width, \"height\": $height, \"minWidth\": $minWidth, \"minHeight\": $minHeight}"
+        output.get().asFile.writeText("{\"ui\": \"$ui\", \"titleBar\": \"$titleBar\", \"window\": $window}\n")
     }
 
     private companion object {

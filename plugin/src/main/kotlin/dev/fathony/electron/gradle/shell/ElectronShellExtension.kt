@@ -3,8 +3,8 @@ package dev.fathony.electron.gradle.shell
 import org.gradle.api.provider.Property
 
 /**
- * `electronShell { }`: the Electron app's name, which sidecar serves its window, how the window's title bar looks, and
- * the versions of the platform it ships and builds with.
+ * `electronShell { }`: the Electron app's name, which sidecar serves its window, how the window's title bar looks, how
+ * large the window is, and the versions of the platform it ships and builds with.
  */
 abstract class ElectronShellExtension {
     /** The app's display name, which also names the packaged app. */
@@ -20,6 +20,18 @@ abstract class ElectronShellExtension {
      * top right and the menu bar is hidden, its menu opened from the page (`window.electronShell`). See the README.
      */
     abstract val titleBar: Property<String>
+
+    /** The window's width when it opens, in CSS pixels: 1200 by default. */
+    abstract val windowWidth: Property<Int>
+
+    /** The window's height when it opens, in CSS pixels: 800 by default. */
+    abstract val windowHeight: Property<Int>
+
+    /** The narrowest the window can be made, in CSS pixels, such as the narrowest its page lays out in: 640 by default. */
+    abstract val minWindowWidth: Property<Int>
+
+    /** The shortest the window can be made, in CSS pixels: 400 by default. */
+    abstract val minWindowHeight: Property<Int>
 
     /** The Java version of the shared runtime, linked from Temurin; sidecars must not target a newer one. */
     abstract val javaVersion: Property<Int>

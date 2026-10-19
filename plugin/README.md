@@ -155,6 +155,8 @@ electronShell {
     appName = "My App"
     uiSidecar = "app"
     // titleBar is "native" or "integrated" (see Title bar and menu)
+    // windowWidth and windowHeight size the window when it opens (1200 × 800), and minWindowWidth and
+    // minWindowHeight the smallest it can be made (640 × 400), in CSS pixels
     // javaVersion, nodeVersion, electronVersion and packagerVersion have defaults (see Versions)
 }
 
@@ -171,7 +173,7 @@ as `Resources/desktop`:
 desktop/
   runtime/              the shared Java runtime
   sidecars/<name>/      lib/ (the sidecar's jars) and sidecar.json (name, main class, modules)
-  shell.json            which sidecar serves the UI, and the title bar's mode
+  shell.json            which sidecar serves the UI, the title bar's mode and the window's size
 ```
 
 ### Title bar and menu
