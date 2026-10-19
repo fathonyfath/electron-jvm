@@ -8,8 +8,22 @@ on:
 
 jobs:
   check:
-    name: Check
-    runs-on: ubuntu-latest
+    name: Check (${{ matrix.os }})
+    # The app is packaged for the platform it is built on, so each platform builds on its own runner.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            electron-cache: ~/.cache/electron
+          - os: windows-latest
+            electron-cache: ~/AppData/Local/electron/Cache
+          - os: macos-latest
+            electron-cache: ~/Library/Caches/electron
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -21,18 +35,18 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.gradle/electron-jvm/node
-          key: node-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          key: node-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Cache Electron download
         uses: actions/cache@v6
         with:
-          path: ~/.cache/electron
-          key: electron-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          path: ${{ matrix.electron-cache }}
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Cache node_modules
         uses: actions/cache@v6
         with:
           path: samples/sample/web/node_modules
-          key: npm-${{ runner.os }}-${{ hashFiles('samples/sample/web/package-lock.json') }}
-          restore-keys: npm-${{ runner.os }}-
+          key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('samples/sample/web/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-${{ runner.arch }}-
       - name: check
         run: ./gradlew check
       - name: assembleDesktop
@@ -42,3 +56,11 @@ jobs:
         # Installs the default Electron and @electron/packager and packages the sample with them, so a version bump
         # (Renovate's included) is tested before it merges.
         run: ./gradlew :samples:shell:package
+      - name: Archive package
+        # tar keeps the executable bits and the macOS bundle's symlinks, which upload-artifact drops.
+        run: tar -czf sample-package.tar.gz -C samples/shell/build/package .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sample-${{ runner.os }}-${{ runner.arch }}
+          path: sample-package.tar.gz
+          retention-days: 14
