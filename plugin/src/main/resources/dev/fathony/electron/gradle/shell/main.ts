@@ -7,6 +7,7 @@ import { app, BrowserWindow, ipcMain, Menu, nativeImage, nativeTheme, protocol, 
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import type { Readable, Writable } from "node:stream";
@@ -34,7 +35,7 @@ interface RunningSidecar {
 
 const desktopDir = app.isPackaged ? path.join(process.resourcesPath, "desktop") : developmentDesktopDir();
 const sidecarsDir = path.join(desktopDir, "sidecars");
-const java = path.join(desktopDir, "runtime", "bin", process.platform === "win32" ? "java.exe" : "java");
+const javaBinary = path.join("bin", process.platform === "win32" ? "java.exe" : "java");
 const token = crypto.randomBytes(32).toString("hex");
 const SCHEME = "sidecar";
 
@@ -43,6 +44,13 @@ let names: string[] = [];
 const sidecars = new Map<string, RunningSidecar>();
 // Restarted on purpose: their exit must not end the app.
 const restarting = new Set<string>();
+// Changed again while restarting: they restart once more after, from the newer build.
+const changedWhileRestarting = new Set<string>();
+// Development only: where each sidecar runs from its own copy of its folder and of the runtime. A build rewrites both in
+// place, and neither survives that: a JVM whose jars change under it crashes, and macOS kills a process started from an
+// executable that was rewritten. Null when packaged.
+const runDir = !app.isPackaged && process.env.DESKTOP_WATCH ? fs.mkdtempSync(path.join(os.tmpdir(), "electron-jvm-sidecars-")) : null;
+let copies = 0;
 let window: BrowserWindow | null = null;
 let uiName = "";
 let titleBar: TitleBar = "native";
@@ -58,10 +66,29 @@ function readJson<T>(file: string): T {
   return JSON.parse(fs.readFileSync(file, "utf8")) as T;
 }
 
-function startSidecar(name: string): Promise<void> {
+/**
+ * Where [name] runs from: its folder and the runtime in a packaged app, else fresh copies of both, copy-on-write clones
+ * where the disk makes them (APFS, Btrfs, ReFS), so they cost no time or space. Copies of its earlier runs, which have
+ * exited, go.
+ */
+function runFolders(name: string): { dir: string; runtime: string } {
   const dir = path.join(sidecarsDir, name);
+  const runtime = path.join(desktopDir, "runtime");
+  if (!runDir) return { dir, runtime };
+  for (const old of fs.readdirSync(runDir).filter((entry) => entry.startsWith(`${name}-`))) {
+    fs.rmSync(path.join(runDir, old), { recursive: true, force: true });
+  }
+  const copy = path.join(runDir, `${name}-${++copies}`);
+  const clone = (from: string, to: string) => fs.cpSync(from, to, { recursive: true, mode: fs.constants.COPYFILE_FICLONE });
+  clone(dir, path.join(copy, "sidecar"));
+  clone(runtime, path.join(copy, "runtime"));
+  return { dir: path.join(copy, "sidecar"), runtime: path.join(copy, "runtime") };
+}
+
+function startSidecar(name: string): Promise<void> {
+  const { dir, runtime } = runFolders(name);
   const { mainClass } = readJson<SidecarManifest>(path.join(dir, "sidecar.json"));
-  const child = spawn(java, ["-cp", path.join(dir, "lib", "*"), mainClass], { stdio: ["pipe", "pipe", "inherit"] });
+  const child = spawn(path.join(runtime, javaBinary), ["-cp", path.join(dir, "lib", "*"), mainClass], { stdio: ["pipe", "pipe", "inherit"] });
   // On stdin, not in the environment, which other processes can read.
   const data = path.join(app.getPath("userData"), "sidecars", name);
   send(child, { type: "token", token, data });
@@ -400,7 +427,11 @@ function watchForChanges(watchCommand: string): void {
 }
 
 async function restart(name: string): Promise<void> {
-  if (restarting.has(name) || quitting) return;
+  if (quitting) return;
+  if (restarting.has(name)) {
+    changedWhileRestarting.add(name);
+    return;
+  }
   restarting.add(name);
   console.log(`[${name}] changed, restarting`);
   try {
@@ -413,6 +444,7 @@ async function restart(name: string): Promise<void> {
     console.error((error as Error).message);
   } finally {
     restarting.delete(name);
+    if (changedWhileRestarting.delete(name)) void restart(name);
   }
 }
 
@@ -453,5 +485,12 @@ if (!app.requestSingleInstanceLock()) {
   app.on("will-quit", () => {
     quitting = true;
     for (const { child } of sidecars.values()) child.stdin.end();
+    // Synchronously, since the app exits right after. Windows keeps the jars of a sidecar still exiting; the system's
+    // temporary folder clears what stays.
+    try {
+      if (runDir) fs.rmSync(runDir, { recursive: true, force: true });
+    } catch {
+      // Left to the system.
+    }
   });
 }
