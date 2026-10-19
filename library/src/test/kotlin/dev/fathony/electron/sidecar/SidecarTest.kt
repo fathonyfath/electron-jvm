@@ -14,6 +14,8 @@ import io.ktor.server.routing.post
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import java.nio.file.Files
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -76,7 +78,12 @@ class SidecarTest {
     private fun sidecarTest(host: String = "localhost:80", block: suspend ApplicationTestBuilder.() -> Unit) =
         testApplication {
             val dataDirectory = Files.createTempDirectory("sidecar-test")
-            val message = """{"type": "token", "token": "$TOKEN", "data": "$dataDirectory"}"""
+            // Built as JSON, as the shell sends it: a Windows path's backslashes must be escaped.
+            val message = buildJsonObject {
+                put("type", "token")
+                put("token", TOKEN)
+                put("data", dataDirectory.toString())
+            }.toString()
             application {
                 sidecar(SidecarToken.fromMessage(message), Peers(), dataDirectory) {
                     page()
