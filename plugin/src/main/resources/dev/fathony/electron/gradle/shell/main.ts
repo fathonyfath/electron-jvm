@@ -3,7 +3,7 @@
 // integrated title bar the page draws the title bar, and sets the app's menu and the window buttons' colors through
 // preload.cjs's bridge.
 // Electron runs this file as it is (Node strips the types), so it uses only erasable syntax.
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, nativeTheme, protocol, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, MenuItem, nativeImage, nativeTheme, protocol, shell } from "electron";
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -309,6 +309,8 @@ const MENU_ROLES = new Set([
   "about", "services", "hide", "hideOthers", "unhide", "quit", "front", "zoom", "appMenu", "fileMenu", "editMenu",
   "viewMenu", "windowMenu",
 ]);
+/** The roles that make a whole menu, such as Edit's, rather than an item. */
+const MENU_OF_ROLES = new Set(["window", "help", "services", "appMenu", "fileMenu", "editMenu", "viewMenu", "windowMenu"]);
 const MENU_TYPES = new Set(["normal", "separator", "checkbox", "radio", "submenu"]);
 const MENU_DEPTH = 4;
 
@@ -376,6 +378,13 @@ function handlePageRequests(): void {
     const { x, y } = (at ?? {}) as { x?: unknown; y?: unknown };
     if (typeof x !== "number" || typeof y !== "number") throw new Error("the menu opens at numbers x and y");
     (menus.get(window) ?? defaultMenu()).popup({ window, x: Math.round(x), y: Math.round(y) });
+  });
+  // For a page that draws its menu itself: an item with this role, clicked, carries it out in the window as the
+  // window's own menu would. A role that is a whole menu (editMenu, windowMenu…) has nothing to carry out.
+  ipcMain.handle("electron-shell:perform-role", (event, role: unknown) => {
+    if (!fromPage(event) || !window) throw new Error("only the window's page performs a menu role");
+    if (typeof role !== "string" || !MENU_ROLES.has(role) || MENU_OF_ROLES.has(role)) throw new Error(`no menu role ${String(role)} to perform`);
+    new MenuItem({ role: role as Electron.MenuItemConstructorOptions["role"] }).click({}, window, window.webContents);
   });
   ipcMain.handle("electron-shell:title-bar-colors", (event, colors: unknown) => {
     if (!fromPage(event) || !window) throw new Error("only the window's page colors the title bar");

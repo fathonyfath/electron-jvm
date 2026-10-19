@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("electronShell", {
   titleBar,
   setMenu: (items) => ipcRenderer.invoke("electron-shell:set-menu", items),
   popUpMenu: (x, y) => ipcRenderer.invoke("electron-shell:pop-up-menu", { x, y }),
+  performRole: (role) => ipcRenderer.invoke("electron-shell:perform-role", role),
   onMenuClick: (listener) => {
     const handler = (_event, id) => listener(id);
     ipcRenderer.on("electron-shell:menu-click", handler);

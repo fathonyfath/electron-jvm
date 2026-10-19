@@ -186,8 +186,9 @@ bar, as editors do, and the window has no other row above it:
   screen's menu bar, as on every Mac app.
 - **Windows and Linux:** Electron draws the window buttons over the page's top right (its window controls overlay),
   in colors the page sets, and hides the menu bar. Its shortcuts still work; the page opens the menu itself, from a
-  button in its title bar, as a native drop-down (`popUpMenu`). A Linux desktop with a global menu bar, such as KDE's,
-  may show the menu there as well.
+  button in its title bar, as a native drop-down (`popUpMenu`), or draws a menu bar of its own and has the shell carry
+  out its items' roles (`performRole`). A Linux desktop with a global menu bar, such as KDE's, may show the menu there
+  as well.
 
 The page then makes its title bar draggable with CSS, and leaves room for the window buttons: on Windows and Linux
 Chromium tells it where they are not, as `env(titlebar-area-x)`, `env(titlebar-area-width)` and
@@ -219,6 +220,7 @@ if (shell) {
   ]);
   shell.onMenuClick((id) => console.log(`clicked ${id}`));
   menuButton.onclick = () => shell.popUpMenu(menuButton.offsetLeft, menuButton.offsetTop + menuButton.offsetHeight);
+  zoomInItem.onclick = () => shell.performRole("zoomIn");   // a menu the page draws carries out a role so
   await shell.setTitleBarColors({ color: "#ffffff", symbolColor: "#1b1f24", height: 44 });   // Windows and Linux only
   await shell.setTheme("dark");   // or "light", or "system"
 }
