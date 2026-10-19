@@ -38,6 +38,11 @@ export interface ElectronShell {
   setMenu(items: MenuItem[]): Promise<void>;
   /** Opens the window's menu at [x], [y] in the page, such as under a menu button. */
   popUpMenu(x: number, y: number): Promise<void>;
+  /**
+   * Carries out [role] in the window (`copy`, `zoomIn`, `togglefullscreen`, `minimize`, `quit`…) as an item of its menu
+   * with that role would, for a page that draws its menu itself; a role that is a whole menu, such as `editMenu`, fails.
+   */
+  performRole(role: string): Promise<void>;
   /** Calls [listener] with an item's id when it is clicked; returns a function that stops. */
   onMenuClick(listener: (id: string) => void): () => void;
   /** The window buttons' background, symbols and height, on Windows and Linux with an integrated title bar. */
