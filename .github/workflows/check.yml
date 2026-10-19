@@ -7,6 +7,19 @@ on:
   workflow_call:
 
 jobs:
+  # The check the main branch's ruleset requires: it passes only when every platform passes, so the ruleset need not
+  # list the platforms.
+  result:
+    name: Check
+    needs: check
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every platform passed
+        run: test "$RESULT" = success
+        env:
+          RESULT: ${{ needs.check.result }}
+
   check:
     name: Check (${{ matrix.os }})
     # The app is packaged for the platform it is built on, so each platform builds on its own runner.
