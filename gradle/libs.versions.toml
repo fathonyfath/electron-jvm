@@ -4,7 +4,7 @@ kotlin = "2.4.21"
 ktor = "3.6.0"
 kotlinxSerialization = "1.11.0"
 logback = "1.6.5"
-htmx = "2.0.11"
+htmx = "4.0.0"
 nodeGradle = "7.1.0"
 # Defaults of electronShell { } and electronSidecar { }, kept current by Renovate (renovate.json) on main and shipped
 # with whatever release comes next. Node.js only builds; Electron is what apps ship, and apps should pin their own.
