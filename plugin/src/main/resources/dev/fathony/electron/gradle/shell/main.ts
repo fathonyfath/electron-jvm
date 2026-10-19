@@ -21,6 +21,15 @@ interface SidecarManifest {
 interface ShellManifest {
   ui: string;
   titleBar?: TitleBar;
+  window?: WindowSize;
+}
+
+/** The window's size when it opens and the smallest it can be made, in CSS pixels (`electronShell { windowWidth }`, …). */
+interface WindowSize {
+  width: number;
+  height: number;
+  minWidth: number;
+  minHeight: number;
 }
 
 /** `native`: the system's title bar and menu bar. `integrated`: the page draws the title bar; see openWindow. */
@@ -54,6 +63,7 @@ let copies = 0;
 let window: BrowserWindow | null = null;
 let uiName = "";
 let titleBar: TitleBar = "native";
+let windowSize: WindowSize = { width: 1200, height: 800, minWidth: 640, minHeight: 400 };
 let quitting = false;
 
 function developmentDesktopDir(): string {
@@ -214,10 +224,7 @@ function openWindow(): void {
       ? { titleBarStyle: "hiddenInset" }
       : { titleBarStyle: "hidden", titleBarOverlay: { height: TITLE_BAR_HEIGHT } };
   const opened = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 640,
-    minHeight: 400,
+    ...windowSize,
     ...frame,
     webPreferences: {
       contextIsolation: true,
@@ -467,6 +474,7 @@ if (!app.requestSingleInstanceLock()) {
       const manifest = readJson<ShellManifest>(path.join(desktopDir, "shell.json"));
       uiName = manifest.ui;
       titleBar = manifest.titleBar ?? "native";
+      windowSize = manifest.window ?? windowSize;
       names = fs.readdirSync(sidecarsDir);
       await Promise.all(names.map(startSidecar));
       sendPeers();
