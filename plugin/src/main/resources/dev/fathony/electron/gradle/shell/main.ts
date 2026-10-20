@@ -4,7 +4,7 @@
 // preload.cjs's bridge.
 // Electron runs this file as it is (Node strips the types), so it uses only erasable syntax.
 import { app, BrowserWindow, ipcMain, Menu, MenuItem, nativeImage, nativeTheme, protocol, shell } from "electron";
-import { spawn, type ChildProcessByStdio } from "node:child_process";
+import { spawn, spawnSync, type ChildProcessByStdio } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -429,8 +429,21 @@ function handlePageRequests(): void {
 // Development only: a sidecar restarts once its folder has been quiet a moment, so a half-written build never starts.
 function watchForChanges(watchCommand: string): void {
   const [command, ...args] = JSON.parse(watchCommand) as string[];
-  const gradle = spawn(command, args, { stdio: ["ignore", "inherit", "inherit"] });
-  app.on("will-quit", () => gradle.kill());
+  // Node refuses to spawn a .bat or .cmd file directly on Windows (EINVAL, since the CVE-2024-27980 fix), so the
+  // Gradle wrapper, gradlew.bat there, runs through cmd.exe, each part quoted so paths with spaces stay whole.
+  const viaCmd = process.platform === "win32" && /\.(bat|cmd)$/i.test(command);
+  const gradle = viaCmd
+    ? spawn(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", `"${[command, ...args].map((part) => `"${part}"`).join(" ")}"`], {
+        stdio: ["ignore", "inherit", "inherit"],
+        windowsVerbatimArguments: true,
+      })
+    : spawn(command, args, { stdio: ["ignore", "inherit", "inherit"] });
+  // gradlew replaces itself with Java, so killing it stops Gradle; under cmd.exe, Gradle is a child of it, which
+  // outlives a kill of cmd.exe alone, so the whole tree goes.
+  app.on("will-quit", () => {
+    if (viaCmd && gradle.pid !== undefined) spawnSync("taskkill", ["/pid", String(gradle.pid), "/t", "/f"], { stdio: "ignore" });
+    else gradle.kill();
+  });
 
   const pending = new Map<string, NodeJS.Timeout>();
   fs.watch(sidecarsDir, { recursive: true }, (_event, file) => {
