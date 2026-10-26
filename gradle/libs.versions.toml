@@ -9,9 +9,9 @@ nodeGradle = "7.1.0"
 # Defaults of electronShell { } and electronSidecar { }, kept current by Renovate (renovate.json) on main and shipped
 # with whatever release comes next. Node.js only builds; Electron is what apps ship, and apps should pin their own.
 # renovate: datasource=node-version depName=node
-nodejs = "24.22.0"
+nodejs = "24.22.1"
 # renovate: datasource=npm depName=electron
-electronApp = "44.8.0"
+electronApp = "44.9.3"
 # renovate: datasource=npm depName=@electron/packager
 electronPackager = "20.3.0"
 
