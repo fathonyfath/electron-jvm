@@ -1,9 +1,9 @@
 [versions]
 electron = "0.1.0-SNAPSHOT"
 kotlin = "2.4.21"
-ktor = "3.6.0"
+ktor = "3.6.1"
 kotlinxSerialization = "1.12.0"
-logback = "1.6.5"
+logback = "1.6.6"
 htmx = "4.0.0"
 nodeGradle = "7.1.0"
 # Defaults of electronShell { } and electronSidecar { }, kept current by Renovate (renovate.json) on main and shipped
