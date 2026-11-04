@@ -11,7 +11,7 @@ nodeGradle = "7.1.0"
 # renovate: datasource=node-version depName=node
 nodejs = "24.22.2"
 # renovate: datasource=npm depName=electron
-electronApp = "44.10.0"
+electronApp = "45.2.3"
 # renovate: datasource=npm depName=@electron/packager
 electronPackager = "20.3.0"
 
