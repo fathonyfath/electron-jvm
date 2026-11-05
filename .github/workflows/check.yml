@@ -72,7 +72,7 @@ jobs:
       - name: Archive package
         # tar keeps the executable bits and the macOS bundle's symlinks, which upload-artifact drops.
         run: tar -czf sample-package.tar.gz -C samples/shell/build/package .
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: sample-${{ runner.os }}-${{ runner.arch }}
           path: sample-package.tar.gz
